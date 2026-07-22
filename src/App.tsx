@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { motion, AnimatePresence } from "framer-motion";
+import { spring } from "@/lib/springs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -307,65 +309,116 @@ export default function App() {
             />
           </Tooltip>
           <div className="ml-auto flex items-center gap-2">
-            {webNews && (
-              <Badge variant="dot" color="green" size="sm">
-                {webNews.count} new web comment{webNews.count > 1 ? "s" : ""} ·{" "}
-                {webNews.project}
-              </Badge>
-            )}
-            {selection && (
-              <Tooltip content={`selected: ${selection.selector}`} side="bottom">
-                <Badge variant="dot" color="orange" size="sm">
-                  <span className="max-w-48 truncate">
-                    {selection.tag}
-                    {selection.text ? ` · ${selection.text}` : ""}
-                  </span>
-                  <button
-                    aria-label="Clear selection"
-                    className="ml-1 opacity-60 hover:opacity-100"
-                    onClick={clearSelection}
-                  >
-                    ×
-                  </button>
-                </Badge>
-              </Tooltip>
-            )}
-            {html && (
+            <AnimatePresence>
+              {webNews && (
+                <motion.div
+                  initial={{ opacity: 0, x: 8, scale: 0.96 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: 8, scale: 0.96 }}
+                  transition={spring.moderate}
+                >
+                  <Badge variant="dot" color="green" size="sm">
+                    {webNews.count} new web comment
+                    {webNews.count > 1 ? "s" : ""} · {webNews.project}
+                  </Badge>
+                </motion.div>
+              )}
+              {selection && (
+                <motion.div
+                  key="sel"
+                  initial={{ opacity: 0, x: 8, scale: 0.96 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: 8, scale: 0.96 }}
+                  transition={spring.moderate}
+                >
+                  <Tooltip content={`selected: ${selection.selector}`} side="bottom">
+                    <span className="flex h-7 items-center gap-1.5 rounded-full border border-border bg-surface-2 pl-2.5 pr-1.5 text-[12px]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#C2410C]" />
+                      <span className="max-w-44 truncate font-mono text-[11px]">
+                        {selection.tag}
+                        {selection.text ? ` · ${selection.text}` : ""}
+                      </span>
+                      <button
+                        aria-label="Clear selection"
+                        className="grid h-4 w-4 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-surface-4 hover:text-foreground"
+                        onClick={clearSelection}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  </Tooltip>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* action cluster */}
+            <div className="flex items-center gap-0.5 rounded-full border border-border bg-surface-2 p-0.5 shadow-surface-1">
               <Tooltip
-                content="Select an element on the canvas to talk about it"
+                content={selectMode ? "Stop selecting" : "Point at an element to talk about it"}
                 side="bottom"
               >
                 <Button
-                  size="sm"
-                  variant={selectMode ? "primary" : "tertiary"}
+                  variant={selectMode ? "primary" : "ghost"}
+                  size="icon-sm"
+                  aria-label="Select an element"
+                  className="rounded-full"
+                  disabled={!html}
                   onClick={() => setSelectMode((m) => !m)}
                 >
-                  {selectMode ? "Selecting…" : "Select"}
+                  <CursorIcon />
                 </Button>
               </Tooltip>
-            )}
-            {state.versions.length > 0 && (
-              <Tooltip content="Publish this project to the web" side="bottom">
-                <Button size="sm" variant="tertiary" onClick={openPublish}>
-                  <CloudIcon /> Publish
+              <Tooltip content="Publish & share" side="bottom">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Publish and share"
+                  className="rounded-full"
+                  disabled={state.versions.length === 0}
+                  onClick={openPublish}
+                >
+                  <CloudIcon />
                 </Button>
               </Tooltip>
-            )}
+            </div>
+
+            {/* version / live status */}
             {currentId && (
               <Tooltip
-                content={live ? "following latest" : "viewing an older version"}
+                content={live ? "following latest" : "click to jump back to latest"}
                 side="bottom"
               >
-                <Badge variant="dot" color={live ? "green" : "amber"} size="sm">
-                  {currentId}
-                  {latest && currentId !== latest.id ? ` · ${latest.id} is latest` : ""}
-                </Badge>
+                <motion.button
+                  layout
+                  onClick={live ? undefined : goLive}
+                  transition={spring.moderate}
+                  className={`flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-medium tabular-nums ${
+                    live
+                      ? "cursor-default border-border bg-surface-2"
+                      : "cursor-pointer border-foreground bg-foreground text-background"
+                  }`}
+                >
+                  <motion.span
+                    layout
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      live ? "animate-pulse bg-emerald-500" : "bg-amber-400"
+                    }`}
+                  />
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    <motion.span
+                      key={live ? `live-${currentId}` : `behind-${currentId}`}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -5 }}
+                      transition={spring.fast}
+                    >
+                      {live
+                        ? `${currentId} · live`
+                        : `${currentId} → go live (${latest?.id})`}
+                    </motion.span>
+                  </AnimatePresence>
+                </motion.button>
               </Tooltip>
-            )}
-            {!live && (
-              <Button size="sm" variant="primary" onClick={goLive}>
-                Go live
-              </Button>
             )}
           </div>
         </header>
@@ -419,47 +472,65 @@ export default function App() {
                           </span>
                         )}
                       </button>
-                      {isActive && (
-                        <div className="mb-1 ml-[15px] flex flex-col gap-0.5 border-l border-border/70 pl-1.5 pt-0.5">
-                          {state.versions.length === 0 && (
-                            <span className="px-2 py-1 text-[11.5px] text-muted-foreground/70">
-                              no versions yet
-                            </span>
-                          )}
-                          {[...state.versions].reverse().map((v) => {
-                            const isLatest = v.id === latest?.id;
-                            const isCurrent = v.id === currentId;
-                            return (
-                              <button
-                                key={v.id}
-                                onClick={() => selectVersion(v.id, isLatest)}
-                                className={`flex w-full min-w-0 flex-col gap-0.5 overflow-hidden rounded-lg px-2 py-1.5 text-left transition-colors ${
-                                  isCurrent
-                                    ? "bg-surface-4 shadow-surface-1"
-                                    : "hover:bg-surface-3"
-                                }`}
-                              >
-                                <span className="flex items-center gap-1.5">
-                                  <span className="text-[12px] font-semibold tabular-nums">
-                                    {v.id}
-                                  </span>
-                                  {isLatest && (
-                                    <Badge variant="dot" color="green" size="sm">
-                                      latest
-                                    </Badge>
-                                  )}
+                      <AnimatePresence initial={false}>
+                        {isActive && (
+                          <motion.div
+                            key="versions"
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={spring.moderate}
+                            className="overflow-hidden"
+                          >
+                            <div className="mb-1 ml-[15px] flex flex-col gap-0.5 border-l border-border/70 pl-1.5 pt-0.5">
+                              {state.versions.length === 0 && (
+                                <span className="px-2 py-1 text-[11.5px] text-muted-foreground/70">
+                                  no versions yet
                                 </span>
-                                <span className="truncate text-[11.5px] text-muted-foreground">
-                                  {v.label}
-                                </span>
-                                <span className="text-[10px] tabular-nums text-muted-foreground/60">
-                                  {timeAgo(v.ts)}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+                              )}
+                              {[...state.versions].reverse().map((v, i) => {
+                                const isLatest = v.id === latest?.id;
+                                const isCurrent = v.id === currentId;
+                                return (
+                                  <motion.button
+                                    layout
+                                    key={v.id}
+                                    initial={{ opacity: 0, x: -6 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{
+                                      ...spring.moderate,
+                                      delay: Math.min(i * 0.025, 0.15),
+                                    }}
+                                    onClick={() => selectVersion(v.id, isLatest)}
+                                    className={`flex w-full min-w-0 flex-col gap-0.5 overflow-hidden rounded-lg px-2 py-1.5 text-left transition-colors ${
+                                      isCurrent
+                                        ? "bg-surface-4 shadow-surface-1"
+                                        : "hover:bg-surface-3"
+                                    }`}
+                                  >
+                                    <span className="flex items-center gap-1.5">
+                                      <span className="text-[12px] font-semibold tabular-nums">
+                                        {v.id}
+                                      </span>
+                                      {isLatest && (
+                                        <Badge variant="dot" color="green" size="sm">
+                                          latest
+                                        </Badge>
+                                      )}
+                                    </span>
+                                    <span className="truncate text-[11.5px] text-muted-foreground">
+                                      {v.label}
+                                    </span>
+                                    <span className="text-[10px] tabular-nums text-muted-foreground/60">
+                                      {timeAgo(v.ts)}
+                                    </span>
+                                  </motion.button>
+                                );
+                              })}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   );
                 })}
@@ -732,6 +803,20 @@ function CloudIcon() {
         stroke="currentColor"
         strokeWidth="1.3"
         strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CursorIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden>
+      <path
+        d="M3 2 L13 7.2 L8.6 8.6 L7.2 13 Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
         strokeLinejoin="round"
       />
     </svg>
