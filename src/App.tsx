@@ -675,8 +675,8 @@ export default function App() {
             offset={2}
             className="flex w-60 shrink-0 flex-col overflow-hidden rounded-xl"
           >
-            <div className="flex items-center justify-between py-1.5 pl-3.5 pr-1.5">
-              <span className="text-[12px] font-medium text-muted-foreground">
+            <div className="flex items-center justify-between py-2 pl-3.5 pr-1.5">
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 Sessions
               </span>
               <Tooltip content="New session" side="bottom">
@@ -700,16 +700,16 @@ export default function App() {
                         whileTap={{ scale: 0.985 }}
                         transition={spring.fast}
                         onClick={() => setActiveProject(p.id)}
-                        className={`flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
+                        className={`group flex w-full items-center gap-1.5 rounded-lg px-2 py-[5px] text-left transition-colors ${
                           isActive ? "bg-surface-3" : "hover:bg-surface-3"
                         }`}
                       >
                         <Chevron open={isActive} />
                         <span
-                          className={`truncate text-[13px] ${
+                          className={`truncate text-[12.5px] transition-colors ${
                             isActive
-                              ? "font-semibold"
-                              : "font-medium text-muted-foreground"
+                              ? "font-semibold text-foreground"
+                              : "font-medium text-muted-foreground group-hover:text-foreground"
                           }`}
                         >
                           {p.name}
@@ -717,18 +717,30 @@ export default function App() {
                         <span className="ml-auto flex items-center gap-1.5">
                           {statuses[p.id] && (
                             <Tooltip
-                              content={`${statuses[p.id].state}${statuses[p.id].detail ? ` · ${statuses[p.id].detail}` : ""}`}
+                              content={
+                                statuses[p.id].detail || statuses[p.id].state
+                              }
                               side="right"
                             >
-                              <span className="grid h-5 w-5 place-items-center">
+                              <motion.span
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={spring.moderate}
+                                className="flex h-[18px] items-center gap-0.5 rounded-full bg-foreground pl-px pr-1.5"
+                              >
                                 <ThinkingOrb
                                   state={statuses[p.id].state as OrbState}
                                   size={20}
+                                  theme="dark"
+                                  className="scale-[0.8]"
                                 />
-                              </span>
+                                <span className="text-[9px] font-medium capitalize leading-none text-background">
+                                  {statuses[p.id].state}…
+                                </span>
+                              </motion.span>
                             </Tooltip>
                           )}
-                          {isActive && (
+                          {isActive && !statuses[p.id] && (
                             <span className="text-[10px] tabular-nums text-muted-foreground/70">
                               {state.versions.length}
                             </span>
@@ -766,27 +778,33 @@ export default function App() {
                                       delay: Math.min(i * 0.025, 0.15),
                                     }}
                                     onClick={() => selectVersion(v.id, isLatest)}
-                                    className={`flex w-full min-w-0 flex-col gap-0.5 overflow-hidden rounded-lg px-2 py-1.5 text-left transition-colors ${
+                                    className={`flex w-full min-w-0 flex-col gap-px overflow-hidden rounded-lg px-2 py-1.5 text-left transition-colors ${
                                       isCurrent
                                         ? "bg-surface-4 shadow-surface-1"
                                         : "hover:bg-surface-3"
                                     }`}
                                   >
-                                    <span className="flex items-center gap-1.5">
+                                    <span className="flex w-full items-center gap-1.5">
                                       <span className="text-[12px] font-semibold tabular-nums">
                                         {v.id}
                                       </span>
                                       {isLatest && (
-                                        <Badge variant="dot" color="green" size="sm">
-                                          latest
-                                        </Badge>
+                                        <Tooltip content="latest" side="right">
+                                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                        </Tooltip>
                                       )}
+                                      <span className="ml-auto text-[10px] tabular-nums text-muted-foreground/60">
+                                        {timeAgo(v.ts)}
+                                      </span>
                                     </span>
-                                    <span className="truncate text-[11.5px] text-muted-foreground">
+                                    <span
+                                      className={`truncate text-[11.5px] ${
+                                        isCurrent
+                                          ? "text-foreground/80"
+                                          : "text-muted-foreground"
+                                      }`}
+                                    >
                                       {v.label}
-                                    </span>
-                                    <span className="text-[10px] tabular-nums text-muted-foreground/60">
-                                      {timeAgo(v.ts)}
                                     </span>
                                   </motion.button>
                                 );
