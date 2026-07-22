@@ -1,134 +1,129 @@
 # lucius
 
-**The canvas your AI pair draws on.** lucius is a desktop app where Claude Code
-(or any agent) publishes rich, self-contained HTML one-pagers — architecture
-diagrams, product briefs, interactive explainers, brainstorm artifacts — while
-you steer by voice or chat. Every push is an immutable version. Scrub the
-history, point at any element, publish to the web, and collect comments from
-your team.
+**The canvas your AI pair draws on.**
 
-Built live, by pairing with Claude, in one day — and designed so the pairing
-loop is the product.
+[![Release](https://img.shields.io/github/v/release/berkantay/lucius)](https://github.com/berkantay/lucius/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-black.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%C2%B7%20Linux%20(source)-black)](#install)
+[![Agent-native](https://img.shields.io/badge/setup-agent--driven-black)](#set-it-up-with-claude-code)
 
-## What it does
+You talk. Claude ships a page. Every pass is kept.
 
-- **A canvas driven by your agent.** Claude renders complete HTML/CSS/JS/SVG
-  documents into the app over a local API — interactive diagrams with
-  click-to-inspect, animated data flows, tdoc-style card explainers.
+lucius is a desktop canvas where your coding agent renders rich, self-contained
+HTML one-pagers — architecture explorers, product briefs, interactive
+explainers, brainstorm artifacts — while you steer by voice or chat. Every push
+is an immutable version you can scrub. Highlight any sentence to comment.
+Publish to your own Cloudflare Worker, invite teammates by GitHub username,
+and watch their comments flow back into the app while the agent's live
+activity orb spins.
+
+![lucius — the welcome session rendering "how lucius works"](docs/screenshot.png)
+
+## Set it up with Claude Code
+
+Paste this into any Claude Code session — your agent does the rest:
+
+```text
+Set up lucius (github.com/berkantay/lucius) on this machine:
+
+1. macOS: run  curl -fsSL https://raw.githubusercontent.com/berkantay/lucius/main/install.sh | sh
+   Linux: git clone https://github.com/berkantay/lucius, cd in, and follow SETUP.md instead.
+2. Launch the app (open /Applications/lucius.app) and poll
+   curl -s http://127.0.0.1:7317/api/ping until it answers {"app":"lucius","ok":true}.
+3. Run ~/.lucius/src/scripts/doctor, execute every entry in missing_steps in
+   order, and re-run doctor after each step. Never assume a step worked.
+4. Run ~/.lucius/src/scripts/verify and do not report success until it prints
+   VERIFY_OK and I confirm the app is showing "how lucius works".
+5. Then follow the lucius-setup skill (~/.claude/skills/lucius-setup/SKILL.md)
+   from Phase 2: ask me what I'm working on and render my first one-pager
+   about it. Offer publishing and invites after.
+```
+
+Prefer doing it yourself? `curl -fsSL https://raw.githubusercontent.com/berkantay/lucius/main/install.sh | sh`,
+open the app, done. From-source and manual paths: [SETUP.md](SETUP.md).
+
+## Why lucius
+
 - **Versions, not edits.** Every iteration is an immutable snapshot in SQLite.
-  The left rail is a timeline; "go live" snaps back to the latest.
-- **Projects as tabs.** Independent workspaces (own versions, own comments) —
-  one per topic, one per brainstorm.
-- **Point at things.** Select mode: click any element in the artifact and the
-  agent can read exactly what you're pointing at (CSS selector + text) and
-  drop comments anchored to it.
-- **Publish & collect comments.** One click publishes all versions of a
-  project to *your own* Cloudflare Worker + R2 (free tier). Viewers sign in
-  with GitHub, highlight text or any diagram, and comment; comments flow back
-  into the app automatically.
-- **MCP + CLI + skill.** The app embeds an MCP server (`http://127.0.0.1:7317/mcp`)
-  with tools for render/comment/selection/focus, a `lucius` CLI, and a Claude
-  Code skill that encodes the artifact quality bar (truth rules, motion,
-  document/canvas modes).
+  The sidebar is a timeline per session; "wait, go back to the earlier one"
+  is a click, not an apology.
+- **Feedback lands on the exact thing you mean.** Highlight text → comment,
+  anchored to the phrase (tdoc-style anchors that survive new versions).
+  Or point at any element with the crosshair — the agent reads exactly what
+  you selected.
+- **Sessions are workspaces.** One per topic, each with its own history,
+  comments, and a live **thinking orb** while an agent works it — visible to
+  you in the sidebar and to your team on the published page.
+- **Publish to infrastructure you own.** One click puts a session on *your*
+  Cloudflare Worker + R2 (free tier). Docs default to link-visibility; flip
+  one private and invite GitHub usernames — uninvited visitors hit a sign-in
+  gate. Viewer comments poll back into the app within a minute, and the agent
+  replies on the page with what it changed.
+- **Agent-native to the bone.** A Claude Code skill encodes the artifact
+  quality bar (truth rules: ground in real repos, never simplify the system;
+  taste rules: strict monochrome, anti-slop list). An embedded MCP server
+  (`127.0.0.1:7317/mcp`) exposes render/comment/selection/status tools to any
+  session. Setup, repair, publishing, and invites are all driven by the
+  `lucius-setup` onboarding skill — your agent operates the product, not you.
+- **Taste is enforced, not hoped for.** `skill/design.md` bans the AI-default
+  looks by name (cream grounds, accent-color confetti, radius soup, stat-tile
+  filler). Ink is the only accent.
 
-## Install
+## The loop
 
-**End users (macOS):**
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/berkantay/lucius/main/install.sh | sh
+```
+ 1 you talk        2 claude builds      3 new version      4 you review        5 publish
+ voice · chat  ─▶  grounds, designs ─▶  immutable,    ─▶   scrub · point  ─▶   share · invite
+ a screenshot      renders              instant            comment
+        ▲                                                      │
+        └────────────── "actually, make it layered" ───────────┘
 ```
 
-Installs the app to /Applications, the Claude Code skills (canvas +
-guided-setup), the CLI, and the MCP registration. Then open lucius and tell
-Claude Code to draw — and for anything operational ("publish this", "invite
-my teammate", "lucius isn't working"), your agent has the `lucius-setup`
-skill to drive it.
-
-**From source — let your coding agent do it.** Tell Claude Code (or
-any agent): *"clone github.com/berkantay/lucius and follow SETUP.md"*. The
-repo ships an agent runbook ([SETUP.md](SETUP.md)) plus `scripts/doctor`
-(machine-readable setup state), and `scripts/verify` (proves the loop by
-rendering the example artifact into a welcome session).
-
-### Manual (dev)
-
-Prereqs: Rust, Node 20+, `jq`.
-
-```bash
-git clone https://github.com/berkantay/lucius && cd lucius
-npm install
-npm run tauri dev
-```
-
-The app writes `~/Library/Application Support/ai.glorya.lucius/server.json`
-(`{port, token}`) on every launch — the CLI and skill read it automatically.
-
-### Claude Code integration
-
-```bash
-# skill + CLI
-ln -s "$PWD/skill" ~/.claude/skills/lucius
-
-# MCP (fixed port)
-claude mcp add --transport http --scope user lucius http://127.0.0.1:7317/mcp
-```
-
-Then, in any Claude Code session: *"put a one-pager about X on the canvas"*.
-
-### Publishing (optional, your own Cloudflare)
-
-```bash
-./skill/lucius setup   # one-time: wrangler login, R2 bucket, KV, worker deploy
-```
-
-Gives you `https://lucius.<your-subdomain>.workers.dev`; the in-app **Publish**
-button does the rest. Config lives in `~/.lucius/published.json`.
+The unit of feedback is a sentence, not a ticket. This repo was built in one
+day inside its own loop — the [example artifact](examples/how-lucius-works.html)
+explaining it was written by Claude, rendered on the canvas it describes, and
+committed as the reference for what generated pages should look like.
 
 ## Architecture
 
 ```
-Claude Code ──(CLI / MCP, bearer token)──▶ control server (Rust, tiny_http)
-                                              │  SQLite: projects · versions · comments
+Claude Code ──(CLI / MCP, bearer token)──▶ control server (Rust, tiny_http :7317)
+                                              │  SQLite: sessions · versions · comments
                                               │  Tauri events
                                               ▼
                                    app shell (React + Fluid Functionalism)
-                                   tabs · version rail · sandboxed iframe canvas
-                                              │ select-mode postMessage
-                                              ▼
+                                   layered sidebar · sandboxed iframe canvas
+                                   highlight comments · selection · orbs
+                                              │
                                    publish ──▶ your Cloudflare Worker + R2
-                                              ◀── comment poller (60s)
+                                              ◀── comment & status sync
 ```
 
-- `src-tauri/` — Rust: store (rusqlite), control server + MCP, publish, poller
-- `src/` — React shell on [Fluid Functionalism](https://www.fluidfunctionalism.com) components
-- `skill/` — Claude Code skill (SKILL.md) + `lucius` CLI
-- `worker/` — the publish/comments worker (vendored from
-  [tdoc](https://github.com/serenakeyitan/tdoc), MIT — see `worker/ATTRIBUTION.md`)
-
-### Members & invites
-
-Published docs default to link-visibility. Make one private and invite people
-by GitHub username — from the Publish dialog's share section, or:
-
-```bash
-./skill/lucius -p myproject share --private --add teammate
-```
-
-Uninvited visitors get a branded sign-in gate; invited logins pass straight
-through after GitHub sign-in. The agent can also reply to web comments with
-status (`lucius reply <comment-id> "done" applied`).
+| Path | What lives there |
+|---|---|
+| `src-tauri/` | Rust: SQLite store, control server + MCP, publish, comment poller |
+| `src/` | React shell on [Fluid Functionalism](https://www.fluidfunctionalism.com) |
+| `skill/` | The canvas skill: SKILL.md (workflow + truth rules), design.md (taste), `lucius` CLI |
+| `setup-skill/` | The onboarding journey skill (install → first artifact → publish → invite) |
+| `worker/` | Publish/comments worker, vendored from [tdoc](https://github.com/serenakeyitan/tdoc) (MIT) with an access-control wrapper |
+| `scripts/` | `doctor` (machine-readable state) · `verify` (proves the loop) · `reset` (replay first-run) |
+| `examples/` | The reference artifact |
 
 ## Roadmap
 
-- **Comment surfaces in-app** — anchored margin comments over the canvas
-  (they're already stored + selector-anchored; the UI was deliberately cut
-  until it earns its place).
-- **A Claude per tab** — spawn a dedicated Claude Code session pinned to a
-  project, Orca-style.
-- **Packaged builds** — signed .dmg via `tauri build`.
-- Own GitHub OAuth app for viewer sign-in (currently tdoc's shared client id).
+- A Claude per session — spawn a dedicated agent pinned to a workspace
+- In-app comment threads over the canvas (stored + anchored today; minimal UI)
+- Signed/notarized builds, Linux bundles
+- Own GitHub OAuth app for viewer sign-in (currently tdoc's shared client id)
+
+## Credits
+
+Built by pairing with Claude, in one day, inside lucius itself. Standing on:
+[tdoc](https://github.com/serenakeyitan/tdoc) (publish worker + comment
+overlay, MIT), [Fluid Functionalism](https://www.fluidfunctionalism.com)
+(shell components), [thinking-orbs](https://github.com/Jakubantalik/thinking-orbs)
+(activity orbs), [Tauri](https://tauri.app) and [shadcn/ui](https://ui.shadcn.com).
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Worker bundle vendored from tdoc (MIT).
+MIT — see [LICENSE](LICENSE).
