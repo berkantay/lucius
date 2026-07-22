@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>how lucius works</title>
+<style>
+  :root{--paper:#F7F5EF;--card:#FFF;--ink:#1D1B17;--mut:#6F685C;--line:#E7E1D4;--wash:#F0EFE9;--signal:#C2410C;--sigbg:#FFF1EA;--sigline:#F5D3C2}
+  body{margin:0;background:var(--paper);color:var(--ink);line-height:1.6;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:840px;margin:0 auto;padding:34px 22px 70px}
+  h1{font-size:30px;letter-spacing:-.02em;margin:0 0 6px}
+  .dek{color:var(--mut);font-size:16px;margin:0 0 4px}
+  .step-no{display:inline-block;font:600 11px ui-monospace,Menlo,monospace;color:var(--signal);background:var(--sigbg);border:1px solid var(--sigline);border-radius:20px;padding:2px 11px;margin-bottom:10px;letter-spacing:1.5px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px 26px;margin:20px 0;box-shadow:0 1px 0 rgba(0,0,0,.02)}
+  .card h2{font-size:21px;margin:2px 0 6px;letter-spacing:-.01em}
+  .card p{margin:8px 0;color:#33302A;font-size:15.5px}
+  .card p.small{color:var(--mut);font-size:13.5px}
+  b.k{color:var(--signal)}
+  code{font:13px ui-monospace,Menlo,monospace;background:var(--wash);border-radius:5px;padding:1px 7px;white-space:nowrap}
+  svg{display:block;width:100%;height:auto;margin:10px 0 4px}
+  text{font-family:system-ui,sans-serif}
+  .mono{font-family:ui-monospace,Menlo,monospace}
+  .recap{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
+  .recap th,.recap td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  .recap th{background:#F3EFE5;font-weight:600}
+  .recap td:first-child{font-weight:600;white-space:nowrap}
+  .recap td:last-child{font:12.5px ui-monospace,Menlo,monospace;color:var(--mut)}
+  .flow{stroke-dasharray:5 7;animation:dash 1.2s linear infinite}
+  @keyframes dash{to{stroke-dashoffset:-24}}
+  .pulse{animation:blink 2.4s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  @media (prefers-reduced-motion: reduce){.flow{animation:none;stroke-dasharray:none}.pulse{animation:none}}
+  .note{font-size:13.5px;color:var(--mut);border-top:1px solid var(--line);margin-top:30px;padding-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>how lucius works</h1>
+  <p class="dek">The pairing loop, explained by an artifact that traveled it. This page was written by Claude, pushed over the local API, versioned in SQLite, and is rendering in the canvas you're reading it on.</p>
+
+  <div class="card">
+    <span class="step-no">THE WHOLE THING IN ONE LINE</span>
+    <h2>You talk; Claude ships a page; every pass is kept</h2>
+    <svg viewBox="0 0 820 128" role="img" aria-label="five stages: talk, build, version, review, publish">
+      <defs><marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8d8676"/></marker></defs>
+      <g font-size="12.5">
+        <rect x="8" y="40" width="140" height="56" rx="11" fill="#fff" stroke="#cfc8bb"/>
+        <rect x="180" y="40" width="140" height="56" rx="11" fill="#fff" stroke="#cfc8bb"/>
+        <rect x="352" y="40" width="140" height="56" rx="11" fill="var(--sigbg)" stroke="var(--sigline)"/>
+        <rect x="524" y="40" width="140" height="56" rx="11" fill="#fff" stroke="#cfc8bb"/>
+        <rect x="690" y="40" width="122" height="56" rx="11" fill="#fff" stroke="#cfc8bb"/>
+        <g font-weight="600" fill="var(--signal)" font-size="11">
+          <circle cx="24" cy="30" r="11" fill="var(--sigbg)" stroke="var(--sigline)"/><text x="24" y="34" text-anchor="middle">1</text>
+          <circle cx="196" cy="30" r="11" fill="var(--sigbg)" stroke="var(--sigline)"/><text x="196" y="34" text-anchor="middle">2</text>
+          <circle cx="368" cy="30" r="11" fill="var(--sigbg)" stroke="var(--sigline)"/><text x="368" y="34" text-anchor="middle">3</text>
+          <circle cx="540" cy="30" r="11" fill="var(--sigbg)" stroke="var(--sigline)"/><text x="540" y="34" text-anchor="middle">4</text>
+          <circle cx="706" cy="30" r="11" fill="var(--sigbg)" stroke="var(--sigline)"/><text x="706" y="34" text-anchor="middle">5</text>
+        </g>
+        <g font-weight="600">
+          <text x="78" y="63" text-anchor="middle">You talk</text>
+          <text x="250" y="63" text-anchor="middle">Claude builds</text>
+          <text x="422" y="63" text-anchor="middle" fill="#8c3410">New version</text>
+          <text x="594" y="63" text-anchor="middle">You review</text>
+          <text x="751" y="63" text-anchor="middle">Publish</text>
+        </g>
+        <g fill="#7a746b" font-size="11">
+          <text x="78" y="80" text-anchor="middle">voice · chat · a screenshot</text>
+          <text x="250" y="80" text-anchor="middle">grounds, designs, renders</text>
+          <text x="422" y="80" text-anchor="middle" fill="#a15a35">immutable, instant</text>
+          <text x="594" y="80" text-anchor="middle">scrub · point · comment</text>
+          <text x="751" y="80" text-anchor="middle">share · invite</text>
+        </g>
+        <g stroke="#bcb5a8" stroke-width="1.6" fill="none" marker-end="url(#a)">
+          <path class="flow" d="M148,68 L176,68"/><path class="flow" d="M320,68 L348,68"/>
+          <path class="flow" d="M492,68 L520,68"/><path class="flow" d="M664,68 L686,68"/>
+        </g>
+        <path class="flow" d="M594,96 C 500,126 340,126 250,96" stroke="#bcb5a8" stroke-width="1.3" fill="none" marker-end="url(#a)"/>
+        <text x="422" y="122" text-anchor="middle" font-size="10.5" fill="#7a746b">"actually, make it layered" → back to 2</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="card">
+    <span class="step-no">STAGE 1 · YOU TALK</span>
+    <h2>Steering is conversation, not configuration</h2>
+    <p>You describe what you want — by voice mid-pairing, in chat, or by pasting a
+    zoomed screenshot of the exact pixels that bother you. Real steering from the
+    session that built this app:</p>
+    <p class="small mono">"give me your options in lucius canvas as v4" · "no scroll
+    tabs on top, i want layered sidebar" · "their height is not same" · "should be
+    highlight based like tdoc"</p>
+    <p>Each of those became the next version of something within minutes. The unit
+    of feedback is a sentence, not a ticket.</p>
+  </div>
+
+  <div class="card">
+    <span class="step-no">STAGE 2 · CLAUDE BUILDS</span>
+    <h2>Grounded first, designed second, then rendered</h2>
+    <p>The skill that drives this canvas has two hard layers. <b class="k">Truth
+    rules</b>: if the artifact describes a real system, Claude scans the actual
+    repo first and simplifies vocabulary, never the system — omitting a real
+    component is a defect. <b class="k">Taste rules</b>: a monochrome house style
+    with one signal color on a strict budget, typography-led hierarchy, and an
+    explicit anti-slop list. The artifact arrives as one self-contained HTML file:</p>
+    <p><code>lucius render page.html "label"</code> — or the MCP <code>render</code> tool, from any Claude session.</p>
+  </div>
+
+  <div class="card">
+    <span class="step-no">STAGE 3 · EVERY PUSH IS A VERSION</span>
+    <h2>Iterations are kept, never overwritten</h2>
+    <svg viewBox="0 0 820 120" role="img" aria-label="a session's version timeline">
+      <g font-size="11.5">
+        <line x1="30" y1="60" x2="790" y2="60" stroke="#cfc8bb" stroke-width="1.2"/>
+        <g class="mono">
+          <circle cx="90" cy="60" r="7" fill="#fff" stroke="#1d1b17" stroke-width="1.3"/><text x="90" y="90" text-anchor="middle">v1</text>
+          <text x="90" y="36" text-anchor="middle" fill="#7a746b" font-size="10">first draft</text>
+          <circle cx="270" cy="60" r="7" fill="#fff" stroke="#1d1b17" stroke-width="1.3"/><text x="270" y="90" text-anchor="middle">v2</text>
+          <text x="270" y="36" text-anchor="middle" fill="#7a746b" font-size="10">"missed the router"</text>
+          <circle cx="450" cy="60" r="7" fill="#fff" stroke="#1d1b17" stroke-width="1.3"/><text x="450" y="90" text-anchor="middle">v3</text>
+          <text x="450" y="36" text-anchor="middle" fill="#7a746b" font-size="10">"longer, info-focused"</text>
+          <circle cx="630" cy="60" r="8" fill="var(--signal)" class="pulse"/><text x="630" y="90" text-anchor="middle" font-weight="600">v4 · live</text>
+          <text x="630" y="36" text-anchor="middle" fill="#7a746b" font-size="10">what you see now</text>
+        </g>
+      </g>
+    </svg>
+    <p>The sidebar is a timeline per session. Scrub back any time — "wait, go back
+    to the earlier one" is a click. The status pill inverts when you're behind and
+    snaps you to the newest push. Sessions keep parallel workstreams apart; other
+    Claude sessions can feed their own.</p>
+  </div>
+
+  <div class="card">
+    <span class="step-no">STAGE 4 · POINT &amp; COMMENT</span>
+    <h2>Feedback lands on the exact thing you mean</h2>
+    <p><b class="k">Highlight any text</b> on this page — a Comment pill appears,
+    and your note anchors to that exact phrase (the anchor carries the text plus
+    context, so it survives new versions when the phrase does). Anchored comments
+    render as underlined highlights; click one for its thread. The crosshair in
+    the header is the other pointer: select an element and Claude reads exactly
+    what you're looking at via <code>get_selection</code>.</p>
+    <p class="small">Try it now on this sentence — this page is a live canvas, not a picture of one.</p>
+  </div>
+
+  <div class="card">
+    <span class="step-no">STAGE 5 · PUBLISH, INVITE, REACT</span>
+    <h2>One click puts it on your own Cloudflare</h2>
+    <p>The cloud button publishes every version of a session to <b class="k">your
+    worker</b> (provisioned once by <code>lucius setup</code> — your account, your
+    R2 bucket, your URL). Docs default to link-visibility; flip one private and
+    invite GitHub usernames — uninvited visitors hit a sign-in gate. Viewers
+    highlight and comment on the published page; their comments flow back into
+    this app within a minute, badge the header, and Claude replies on the page
+    with what it changed: <code>lucius reply &lt;id&gt; "fixed in v5" applied</code>.</p>
+  </div>
+
+  <div class="card">
+    <span class="step-no">THE WHOLE LOOP, ONE TABLE</span>
+    <h2>Every action and where it lives</h2>
+    <div style="overflow-x:auto">
+    <table class="recap">
+      <tr><th>Action</th><th>In the app</th><th>For Claude</th></tr>
+      <tr><td>New iteration</td><td>appears live on the canvas</td><td>lucius render · MCP render</td></tr>
+      <tr><td>Scrub history</td><td>sidebar timeline, go-live pill</td><td>lucius focus vN</td></tr>
+      <tr><td>Point at things</td><td>crosshair → select an element</td><td>lucius selection · get_selection</td></tr>
+      <tr><td>Comment</td><td>highlight text → Comment pill</td><td>lucius comment · add_comment + anchor</td></tr>
+      <tr><td>Publish</td><td>cloud button → URL + copy</td><td>lucius publish</td></tr>
+      <tr><td>Invite members</td><td>Publish dialog → private + invite</td><td>lucius share --private --add user</td></tr>
+      <tr><td>React to feedback</td><td>web comments badge in ~60s</td><td>lucius reply id "…" applied</td></tr>
+    </table>
+    </div>
+  </div>
+
+  <div class="note"><b>Receipts:</b> this page is the flow it describes — written by
+  Claude during the session that built lucius, rendered via the local API into the
+  example session, and committed to the repo at <span class="mono">examples/how-lucius-works.html</span>.
+  Open source at <span class="mono">github.com/berkantay/lucius</span> (MIT).</div>
+</div>
+</body>
+</html>
