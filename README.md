@@ -39,8 +39,11 @@ loop is the product.
 curl -fsSL https://raw.githubusercontent.com/berkantay/lucius/main/install.sh | sh
 ```
 
-Installs the app to /Applications, the Claude Code skill + CLI, and the MCP
-registration. Then open lucius and tell Claude Code to draw.
+Installs the app to /Applications, the Claude Code skills (canvas +
+guided-setup), the CLI, and the MCP registration. Then open lucius and tell
+Claude Code to draw — and for anything operational ("publish this", "invite
+my teammate", "lucius isn't working"), your agent has the `lucius-setup`
+skill to drive it.
 
 **From source — let your coding agent do it.** Tell Claude Code (or
 any agent): *"clone github.com/berkantay/lucius and follow SETUP.md"*. The

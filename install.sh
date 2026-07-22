@@ -46,7 +46,8 @@ rm -rf "$LUCIUS_HOME/src"
 mv "$LUCIUS_HOME/lucius-main" "$LUCIUS_HOME/src"
 mkdir -p "$HOME/.claude/skills"
 ln -sfn "$LUCIUS_HOME/src/skill" "$HOME/.claude/skills/lucius"
-say "skill -> ~/.claude/skills/lucius (CLI: ~/.claude/skills/lucius/lucius)"
+ln -sfn "$LUCIUS_HOME/src/setup-skill" "$HOME/.claude/skills/lucius-setup"
+say "skills -> ~/.claude/skills/lucius + lucius-setup (CLI: ~/.claude/skills/lucius/lucius)"
 
 # ---- 3 · MCP ---------------------------------------------------------------
 if command -v claude >/dev/null 2>&1; then

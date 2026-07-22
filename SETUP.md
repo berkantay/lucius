@@ -30,7 +30,11 @@ Quickstart at the bottom yourself.
    the example artifact — the user's app window should visibly show
    **"how lucius works"**. If it prints `VERIFY_FAIL: <reason>`, fix that
    reason and re-run; do not report success until `VERIFY_OK`.
-6. Tell the user: the skill is installed (any Claude Code session can now
+6. From now on, guided flows live in the **lucius-setup skill**
+   (`~/.claude/skills/lucius-setup`, installed alongside): publishing
+   onboarding, invitations, updates, repair. This file is only the
+   bootstrap for machines that don't have the skill yet.
+7. Tell the user: the skill is installed (any Claude Code session can now
    `lucius render …`), the MCP server is registered (new sessions get lucius
    tools natively), and — before authoring any artifact — the skill requires
    reading `skill/design.md` (taste rules) and `skill/SKILL.md` (workflow +
