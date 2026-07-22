@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+# lucius — CLI for the lucius pairing canvas. Reads the app's server.json for port+token.
+set -euo pipefail
+
+DATA_DIR="${LUCIUS_DATA_DIR:-$HOME/Library/Application Support/ai.glorya.lucius}"
+INFO="$DATA_DIR/server.json"
+PROJECT="${LUCIUS_PROJECT:-default}"
+
+usage() {
+  cat <<'EOF'
+usage: lucius [-p <project>] <command> [args]
+
+  setup                   one-time Cloudflare setup: deploy YOUR lucius worker + R2
+  ping                    check the app is running (no auth)
+  projects                list projects (tabs)
+  new-project <name>      create a project tab, prints its id
+  state                   project state: versions + comments (JSON)
+  selection               element the user currently has selected (null if none)
+  render <file.html> [label]   push a new iteration to the project's canvas
+  html <version-id>       fetch the HTML of a version
+  focus <version-id>      make the app show a specific version
+  publish                 publish the project to the user's Cloudflare worker, prints URL
+  comment <text> [version-id]  add a voice-note comment (author: claude)
+
+Project selection: -p flag, else $LUCIUS_PROJECT, else "default".
+EOF
+  exit 1
+}
+
+if [ "${1:-}" = "-p" ]; then
+  PROJECT="${2:?-p needs a project id}"
+  shift 2
+fi
+
+# ---- setup: one-time Cloudflare provisioning (own worker + R2 + KV) --------
+# Runs without the app. Deploys the vendored worker as "lucius" on the user's
+# own Cloudflare account and writes ~/.lucius/published.json for the app.
+if [ "${1:-}" = "setup" ]; then
+  command -v wrangler >/dev/null || { echo "needs wrangler: npm i -g wrangler" >&2; exit 1; }
+  command -v jq >/dev/null || { echo "needs jq" >&2; exit 1; }
+  if ! wrangler whoami >/dev/null 2>&1; then
+    echo "[lucius] opening browser for wrangler login..."
+    wrangler login
+  fi
+  SKILL_DIR="$(cd "$(dirname "$0")" && pwd)"
+  SRC_WORKER="$SKILL_DIR/../worker"
+  [ -f "$SRC_WORKER/_worker.bundled.js" ] || { echo "worker bundle missing at $SRC_WORKER" >&2; exit 1; }
+  WORK="$HOME/.lucius/worker"; mkdir -p "$WORK"
+  cp "$SRC_WORKER/_worker.bundled.js" "$WORK/"
+
+  OWNER="$(gh api user -q .login 2>/dev/null || echo "")"
+  echo "[lucius] creating R2 bucket lucius-docs (idempotent)..."
+  wrangler r2 bucket create lucius-docs >/dev/null 2>&1 || true
+
+  KV_ID="$(wrangler kv namespace list 2>/dev/null | jq -r '.[] | select(.title == "LUCIUS_META") | .id' | head -1 || true)"
+  if [ -z "$KV_ID" ]; then
+    echo "[lucius] creating KV namespace..."
+    KV_OUT="$(wrangler kv namespace create LUCIUS_META 2>&1 || true)"
+    KV_ID="$(echo "$KV_OUT" | grep -A2 'id' | grep -oE '[a-f0-9]{32}' | head -1 || true)"
+  fi
+  [ -n "$KV_ID" ] || { echo "[lucius] could not create/find KV namespace LUCIUS_META" >&2; exit 1; }
+
+  sed "s/PLACEHOLDER_KV_ID/$KV_ID/; s/PLACEHOLDER_OWNER/$OWNER/" "$SRC_WORKER/wrangler.toml.template" > "$WORK/wrangler.toml"
+  echo "[lucius] deploying worker 'lucius'..."
+  DEPLOY_OUT="$(cd "$WORK" && wrangler deploy 2>&1)" || { echo "$DEPLOY_OUT" >&2; exit 1; }
+  URL="$(echo "$DEPLOY_OUT" | grep -oE 'https://[a-z0-9.-]+\.workers\.dev' | head -1)"
+  HOST="${URL#https://}"
+  SUB="${HOST#lucius.}"; SUB="${SUB%.workers.dev}"
+
+  CFG="$HOME/.lucius/published.json"
+  if [ -f "$CFG" ] && jq -e '.upload_token' "$CFG" >/dev/null 2>&1; then
+    TOKEN="$(jq -r .upload_token "$CFG")"
+  else
+    TOKEN="$(openssl rand -hex 24)"
+  fi
+  (cd "$WORK" && echo "$TOKEN" | wrangler secret put TDOC_UPLOAD_TOKEN >/dev/null)
+
+  jq -n --arg sub "$SUB" --arg host "$HOST" --arg token "$TOKEN" --arg kv "$KV_ID" --arg owner "$OWNER" \
+    '{worker:"lucius", subdomain:$sub, public_host:$host, custom_domain:"", kv_id:$kv, owner:$owner, upload_token:$token, created:(now|todate)}' > "$CFG"
+  echo "[lucius] ready — publishing lives at https://$HOST"
+  exit 0
+fi
+
+[ -f "$INFO" ] || { echo "lucius app is not running (no $INFO)" >&2; exit 2; }
+PORT=$(jq -r .port "$INFO")
+TOKEN=$(jq -r .token "$INFO")
+BASE="http://127.0.0.1:$PORT"
+
+auth=(-H "authorization: Bearer $TOKEN" -H "content-type: application/json")
+
+cmd="${1:-}"; shift || true
+case "$cmd" in
+  ping)
+    curl -sf "$BASE/api/ping" ;;
+  projects)
+    curl -sf "${auth[@]}" "$BASE/api/projects" ;;
+  new-project)
+    name="${1:?usage: lucius new-project <name>}"
+    jq -n --arg name "$name" '{name: $name}' |
+      curl -sf -X POST "${auth[@]}" --data-binary @- "$BASE/api/projects" ;;
+  state)
+    curl -sf "${auth[@]}" "$BASE/api/state?project=$PROJECT" ;;
+  selection)
+    curl -sf "${auth[@]}" "$BASE/api/selection" ;;
+  render)
+    file="${1:?usage: lucius render <file.html> [label]}"; label="${2:-}"
+    jq -n --rawfile html "$file" --arg label "$label" --arg p "$PROJECT" \
+      '{html: $html, project_id: $p} + (if $label == "" then {} else {label: $label} end)' |
+      curl -sf -X POST "${auth[@]}" --data-binary @- "$BASE/api/render" ;;
+  html)
+    id="${1:?usage: lucius html <version-id>}"
+    curl -sf "${auth[@]}" "$BASE/api/version/$id?project=$PROJECT" | jq -r .html ;;
+  publish)
+    jq -n --arg p "$PROJECT" '{project_id: $p}' |
+      curl -sf -X POST "${auth[@]}" --data-binary @- "$BASE/api/publish" ;;
+  focus)
+    id="${1:?usage: lucius focus <version-id>}"
+    jq -n --arg v "$id" --arg p "$PROJECT" '{version_id: $v, project_id: $p}' |
+      curl -sf -X POST "${auth[@]}" --data-binary @- "$BASE/api/focus" ;;
+  comment)
+    text="${1:?usage: lucius comment <text> [version-id]}"; vid="${2:-}"
+    jq -n --arg text "$text" --arg v "$vid" --arg p "$PROJECT" \
+      '{text: $text, author: "claude", project_id: $p} + (if $v == "" then {} else {version_id: $v} end)' |
+      curl -sf -X POST "${auth[@]}" --data-binary @- "$BASE/api/comment" ;;
+  *)
+    usage ;;
+esac
+echo

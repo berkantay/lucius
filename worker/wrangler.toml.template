@@ -1,0 +1,31 @@
+name = "lucius"
+main = "_worker.bundled.js"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+[[r2_buckets]]
+binding = "DOCS"
+bucket_name = "lucius-docs"
+
+[[kv_namespaces]]
+binding = "META"
+id = "PLACEHOLDER_KV_ID"
+
+# Per-slug write serialization: all comment mutations for one slug funnel
+# through one CommentsStore DO instance, so concurrent writers can't clobber
+# each other. Uses the same META KV for storage — purely a serialization gate.
+[[durable_objects.bindings]]
+name = "COMMENTS"
+class_name = "CommentsStore"
+
+[[migrations]]
+tag = "v1-comments-do"
+new_sqlite_classes = ["CommentsStore"]
+
+[vars]
+GITHUB_CLIENT_ID = "Ov23liZ1UAGOchvKPmlS"
+# The worker owner's GitHub login — only this signed-in viewer sees the
+# private "My docs" catalog. Empty = docs reachable only by direct link.
+TDOC_OWNER = "PLACEHOLDER_OWNER"
+
+# Secret: TDOC_UPLOAD_TOKEN — set via `wrangler secret put TDOC_UPLOAD_TOKEN`
