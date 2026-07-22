@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# lucius doctor — machine-readable setup state for humans AND coding agents.
+# Prints one JSON object. Non-destructive: checks only, changes nothing.
+# Agents: run this first, execute missing_steps in order, re-run after each.
+set -uo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+have() { command -v "$1" >/dev/null 2>&1; }
+J() { printf '%s' "$1" | sed 's/"/\\"/g'; }
+B() { [ -n "$1" ] && echo true || echo false; }
+
+NODE=$(have node && node --version 2>/dev/null || echo "")
+CARGO=$(have cargo && cargo --version 2>/dev/null | awk '{print $2}' || echo "")
+RUSTC=$(have rustc && rustc --version 2>/dev/null | awk '{print $2}' || echo "")
+JQ=$(have jq && echo yes || echo "")
+WRANGLER=$(have wrangler && wrangler --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || echo "")
+CLAUDE=$(have claude && echo yes || echo "")
+
+NODE_MODULES=$([ -d "$ROOT/node_modules" ] && echo yes || echo "")
+
+# app running? (fixed port first, then server.json)
+DATA_DIR="${LUCIUS_DATA_DIR:-$HOME/Library/Application Support/ai.glorya.lucius}"
+RUNNING=""
+PORT=""
+if curl -sf --max-time 2 "http://127.0.0.1:7317/api/ping" 2>/dev/null | grep -q '"app":"lucius"'; then
+  RUNNING=yes; PORT=7317
+elif [ -f "$DATA_DIR/server.json" ] && have jq; then
+  P=$(jq -r .port "$DATA_DIR/server.json" 2>/dev/null)
+  if [ -n "$P" ] && curl -sf --max-time 2 "http://127.0.0.1:$P/api/ping" 2>/dev/null | grep -q '"app":"lucius"'; then
+    RUNNING=yes; PORT="$P"
+  fi
+fi
+
+SKILL_LINK=""
+[ -e "$HOME/.claude/skills/lucius/SKILL.md" ] && SKILL_LINK=yes
+
+MCP=""
+[ -f "$HOME/.claude.json" ] && grep -q '"lucius"' "$HOME/.claude.json" 2>/dev/null && MCP=yes
+
+PUBLISH=""
+[ -f "$HOME/.lucius/published.json" ] && PUBLISH=yes
+
+STEPS=""
+add_step() { # id kind cmd note
+  local s="{\"id\":\"$1\",\"kind\":\"$2\",\"cmd\":\"$(J "$3")\",\"note\":\"$(J "$4")\"}"
+  STEPS="${STEPS:+$STEPS,}$s"
+}
+
+[ -z "$NODE" ]  && add_step node install "brew install node || see https://nodejs.org" "Node 20+ required for the frontend"
+[ -z "$CARGO" ] && add_step rust install "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh" "Rust toolchain required for the Tauri app"
+[ -z "$JQ" ]    && add_step jq install "brew install jq || apt-get install jq" "jq required by the lucius CLI"
+[ -z "$NODE_MODULES" ] && add_step deps install "cd $ROOT && npm install" "frontend dependencies"
+if [ "$(uname)" = "Linux" ]; then
+  add_step linux-deps check "apt-get install libwebkit2gtk-4.1-dev build-essential libssl-dev libayatana-appindicator3-dev librsvg2-dev" "Tauri Linux prerequisites (skip if already installed); data dir is ~/.local/share/ai.glorya.lucius"
+fi
+[ -z "$RUNNING" ] && add_step app run "cd $ROOT && npm run tauri dev" "start the app (first Rust build takes minutes); keep it running in the background"
+[ -z "$SKILL_LINK" ] && add_step skill install "ln -sfn $ROOT/skill \$HOME/.claude/skills/lucius" "installs the Claude Code skill + CLI"
+[ -z "$MCP" ] && [ -n "$CLAUDE" ] && add_step mcp install "claude mcp add --transport http --scope user lucius http://127.0.0.1:7317/mcp" "registers the MCP server for all Claude Code sessions"
+[ -z "$PUBLISH" ] && add_step publish optional "$ROOT/skill/lucius setup" "OPTIONAL: Cloudflare publishing (needs wrangler + a Cloudflare account; opens browser for login)"
+
+READY_CORE=$([ -n "$RUNNING" ] && [ -n "$SKILL_LINK" ] && echo true || echo false)
+
+cat <<EOF
+{
+  "app": "lucius",
+  "root": "$(J "$ROOT")",
+  "deps": {
+    "node": "$(J "$NODE")",
+    "rustc": "$(J "$RUSTC")",
+    "cargo": "$(J "$CARGO")",
+    "jq": "${JQ:-}",
+    "wrangler": "$(J "$WRANGLER")",
+    "claude_cli": "${CLAUDE:-}",
+    "node_modules": "${NODE_MODULES:-}"
+  },
+  "app_running": $(B "$RUNNING"),
+  "port": "${PORT}",
+  "skill_installed": $(B "$SKILL_LINK"),
+  "mcp_registered": $(B "$MCP"),
+  "publish_configured": $(B "$PUBLISH"),
+  "ready": ${READY_CORE},
+  "missing_steps": [${STEPS}]
+}
+EOF

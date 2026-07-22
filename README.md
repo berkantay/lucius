@@ -31,7 +31,15 @@ loop is the product.
   Code skill that encodes the artifact quality bar (truth rules, motion,
   document/canvas modes).
 
-## Install (dev)
+## Install
+
+**The recommended way: let your coding agent do it.** Tell Claude Code (or
+any agent): *"clone github.com/berkantay/lucius and follow SETUP.md"*. The
+repo ships an agent runbook ([SETUP.md](SETUP.md)) plus `scripts/doctor`
+(machine-readable setup state), and `scripts/verify` (proves the loop by
+rendering the example artifact into a welcome session).
+
+### Manual (dev)
 
 Prereqs: Rust, Node 20+, `jq`.
 

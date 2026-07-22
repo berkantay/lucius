@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# lucius verify — prove the whole loop works by pushing the example artifact
+# into a "welcome" session. Idempotent; safe to re-run. Exits non-zero with a
+# reason on the first failed check so agents can act on it.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+CLI="$ROOT/skill/lucius"
+
+fail() { echo "VERIFY_FAIL: $1" >&2; exit 1; }
+
+command -v jq >/dev/null || fail "jq missing"
+[ -x "$CLI" ] || fail "CLI missing at $CLI"
+
+"$CLI" ping >/dev/null 2>&1 || fail "app not running — start with: npm run tauri dev"
+
+# ensure the welcome session exists (create is idempotent by name-slug)
+if ! "$CLI" projects | jq -e '.[] | select(.id=="welcome")' >/dev/null 2>&1; then
+  "$CLI" new-project "welcome" >/dev/null || fail "could not create welcome session"
+fi
+
+"$CLI" -p welcome render "$ROOT/examples/how-lucius-works.html" "welcome — how lucius works" >/dev/null \
+  || fail "render failed"
+
+"$CLI" -p welcome state | jq -e '.versions | length > 0' >/dev/null \
+  || fail "version did not land in state"
+
+"$CLI" -p welcome comment "Setup verified end-to-end: app, CLI, render, versioning, comments." >/dev/null \
+  || fail "comment failed"
+
+"$CLI" -p welcome status idle >/dev/null 2>&1 || true
+
+echo "VERIFY_OK: welcome session rendered — the canvas should be showing 'how lucius works'."
