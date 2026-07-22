@@ -59,12 +59,13 @@ fn add_comment(
     text: String,
     author: Option<String>,
     version_id: Option<String>,
+    anchor: Option<String>,
     state: tauri::State<AppState>,
     app: tauri::AppHandle,
 ) -> Comment {
     let (comment, snapshot) = {
         let s = state.0.lock().unwrap();
-        let c = s.add_comment(&project, &text, author, version_id, None);
+        let c = s.add_comment(&project, &text, author, version_id, anchor);
         (c, s.state(&project))
     };
     let _ = app.emit(
