@@ -568,30 +568,32 @@ export default function App() {
                 </Button>
               </Tooltip>
               <Tooltip content="Comments" side="bottom">
-                <Button
-                  variant={commentsOpen ? "primary" : "ghost"}
-                  size="icon-sm"
-                  aria-label="Comments"
-                  className="h-[22px] w-auto min-w-[22px] rounded-full px-1.5"
-                  disabled={!currentId}
-                  onClick={() => setCommentsOpen((o) => !o)}
-                >
-                  <CommentIcon />
-                  {versionComments.length > 0 && (
-                    <AnimatePresence mode="popLayout" initial={false}>
+                <span className="relative inline-flex">
+                  <Button
+                    variant={commentsOpen ? "primary" : "ghost"}
+                    size="icon-sm"
+                    aria-label="Comments"
+                    className="h-[22px] w-[22px] rounded-full p-0"
+                    disabled={!currentId}
+                    onClick={() => setCommentsOpen((o) => !o)}
+                  >
+                    <CommentIcon />
+                  </Button>
+                  <AnimatePresence>
+                    {versionComments.length > 0 && (
                       <motion.span
                         key={versionComments.length}
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -4 }}
+                        initial={{ opacity: 0, scale: 0.6 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.6 }}
                         transition={spring.fast}
-                        className="text-[10px] font-semibold tabular-nums"
+                        className="pointer-events-none absolute -right-1 -top-1 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-foreground px-0.5 text-[8.5px] font-semibold tabular-nums leading-none text-background"
                       >
                         {versionComments.length}
                       </motion.span>
-                    </AnimatePresence>
-                  )}
-                </Button>
+                    )}
+                  </AnimatePresence>
+                </span>
               </Tooltip>
               <Tooltip content="Publish & share" side="bottom">
                 <Button
@@ -618,25 +620,25 @@ export default function App() {
                   whileTap={live ? undefined : { scale: 0.96 }}
                   onClick={live ? undefined : goLive}
                   transition={spring.moderate}
-                  className={`flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-medium tabular-nums ${
+                  className={`flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-[12px] font-medium tabular-nums ${
                     live
                       ? "cursor-default border-border bg-surface-2"
                       : "cursor-pointer border-foreground bg-foreground text-background"
                   }`}
                 >
-                  <motion.span
-                    layout
-                    className={`h-1.5 w-1.5 rounded-full ${
+                  <span
+                    className={`h-1.5 w-1.5 flex-none rounded-full ${
                       live ? "animate-pulse bg-emerald-500" : "bg-amber-400"
                     }`}
                   />
-                  <AnimatePresence mode="popLayout" initial={false}>
+                  <AnimatePresence mode="wait" initial={false}>
                     <motion.span
                       key={live ? `live-${currentId}` : `behind-${currentId}`}
-                      initial={{ opacity: 0, y: 5 }}
+                      initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -5 }}
+                      exit={{ opacity: 0, y: -4 }}
                       transition={spring.fast}
+                      className="whitespace-nowrap"
                     >
                       {live
                         ? `${currentId} · live`
