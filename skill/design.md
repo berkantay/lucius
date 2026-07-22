@@ -84,6 +84,43 @@ Before styling any component, name its job in one sentence. If the job is
 - **Charts:** SVG, quiet hairline grid, emphasized endpoint or delta, real
   numbers only, axis labels in mono 10px. No chart without a source.
 
+## Sleek monochrome — the interface ground (distilled from the registries)
+
+Reading docs use the warm paper world above. **Interface-mode artifacts**
+(dashboards, explorers, tools) may instead use the pure-neutral ground the
+best shadcn registries share (shadcn neutral, Fluid Functionalism, Geist):
+
+```css
+:root{
+  --bg:     oklch(1 0 0);        /* pure white ground */
+  --ink:    oklch(0.145 0 0);    /* near-black */
+  --solid:  oklch(0.205 0 0);    /* filled buttons/chips — value, not hue */
+  --mut:    oklch(0.556 0 0);    /* secondary text */
+  --wash:   oklch(0.97 0 0);     /* recessed surface */
+  --hair:   rgb(0 0 0 / 0.07);   /* hairlines — translucent, not grey */
+}
+```
+
+What actually makes these registries read "sleek" — copy the moves, not the look:
+
+- **Contrast is the accent.** Monochrome pops through value jumps: near-black
+  solid fills for the primary action/chip, everything else outline or ghost.
+  No hue needed; the signal budget still applies on top.
+- **Hairlines are translucent black** (`rgb(0 0 0 / .06–.08)`), never a grey
+  hex — they sit correctly on every surface level automatically.
+- **In-between weights.** Fluid tunes Inter to wght 450/550, not 400/600 —
+  labels feel machined instead of bolded. With system fonts, approximate:
+  500 for labels + slight tracking, 600 reserved for real emphasis.
+- **Data is mono and tabular, always** — ids, counts, timestamps, port
+  numbers in `ui-monospace` with `tabular-nums`; uppercase micro-labels at
+  10–11px with +1.5–2px tracking. This one habit does half the sleekness.
+- **Motion is critically damped** — 80–160ms, zero bounce, settles exactly
+  (Fluid's spring tokens). Interface artifacts never wobble; save the
+  personality for the one ambient/live element.
+- **Two radii, one shadow step.** Registries feel tight because nothing
+  varies without meaning: 6–8px controls, 14–18px containers, and at most
+  one shadow level above the hairline.
+
 ## Motion has a job (fluid-functionalism rule)
 
 Every animation points at something: a packet tracing the real path, a pulse
