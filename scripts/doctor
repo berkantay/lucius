@@ -35,7 +35,9 @@ SKILL_LINK=""
 [ -e "$HOME/.claude/skills/lucius/SKILL.md" ] && SKILL_LINK=yes
 
 MCP=""
-[ -f "$HOME/.claude.json" ] && grep -q '"lucius"' "$HOME/.claude.json" 2>/dev/null && MCP=yes
+if [ -f "$HOME/.claude.json" ] && have jq; then
+  jq -e '.mcpServers.lucius' "$HOME/.claude.json" >/dev/null 2>&1 && MCP=yes
+fi
 
 PUBLISH=""
 [ -f "$HOME/.lucius/published.json" ] && PUBLISH=yes
