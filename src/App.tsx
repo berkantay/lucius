@@ -13,7 +13,6 @@ import {
 import { InputCopy } from "@/components/ui/input-copy";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipProvider } from "@/components/ui/tooltip";
-import { TabsSubtle, TabsSubtleItem } from "@/components/ui/tabs-subtle";
 import {
   Dialog,
   DialogContent,
@@ -307,32 +306,6 @@ export default function App() {
               }`}
             />
           </Tooltip>
-          <div className="ml-2 flex min-w-0 items-center gap-1">
-            <TabsSubtle
-              selectedIndex={Math.max(
-                0,
-                projects.findIndex((p) => p.id === activeProject),
-              )}
-              onSelect={(i) => {
-                const p = projects[i];
-                if (p) setActiveProject(p.id);
-              }}
-            >
-              {projects.map((p, i) => (
-                <TabsSubtleItem key={p.id} index={i} label={p.name} />
-              ))}
-            </TabsSubtle>
-            <Tooltip content="New project" side="bottom">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="New project"
-                onClick={() => setNewOpen(true)}
-              >
-                <PlusIcon />
-              </Button>
-            </Tooltip>
-          </div>
           <div className="ml-auto flex items-center gap-2">
             {webNews && (
               <Badge variant="dot" color="green" size="sm">
@@ -398,51 +371,96 @@ export default function App() {
         </header>
 
         <div className="flex min-h-0 flex-1 gap-3 px-3 pb-3">
-          {/* versions rail */}
+          {/* layered sidebar: sessions → versions */}
           <Elevated
             offset={2}
-            className="flex w-56 shrink-0 flex-col overflow-hidden rounded-xl"
+            className="flex w-60 shrink-0 flex-col overflow-hidden rounded-xl"
           >
-            <div className="flex items-baseline justify-between px-3.5 pb-2 pt-3">
+            <div className="flex items-center justify-between py-1.5 pl-3.5 pr-1.5">
               <span className="text-[12px] font-medium text-muted-foreground">
-                Versions
+                Sessions
               </span>
-              <span className="text-[11px] tabular-nums text-muted-foreground/70">
-                {state.versions.length}
-              </span>
+              <Tooltip content="New session" side="bottom">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="New session"
+                  onClick={() => setNewOpen(true)}
+                >
+                  <PlusIcon />
+                </Button>
+              </Tooltip>
             </div>
             <ScrollArea className="min-h-0 w-full flex-1 [&_[data-radix-scroll-area-viewport]>div]:!block">
               <div className="flex w-full flex-col gap-0.5 p-1.5">
-                {[...state.versions].reverse().map((v) => {
-                  const isLatest = v.id === latest?.id;
-                  const isCurrent = v.id === currentId;
+                {projects.map((p) => {
+                  const isActive = p.id === activeProject;
                   return (
-                    <button
-                      key={v.id}
-                      onClick={() => selectVersion(v.id, isLatest)}
-                      className={`flex w-full min-w-0 flex-col gap-0.5 overflow-hidden rounded-lg px-2.5 py-2 text-left transition-colors ${
-                        isCurrent
-                          ? "bg-surface-4 shadow-surface-1"
-                          : "hover:bg-surface-3"
-                      }`}
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <span className="text-[12px] font-semibold">
-                          {v.id}
+                    <div key={p.id} className="flex w-full flex-col">
+                      <button
+                        onClick={() => setActiveProject(p.id)}
+                        className={`flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
+                          isActive ? "bg-surface-3" : "hover:bg-surface-3"
+                        }`}
+                      >
+                        <Chevron open={isActive} />
+                        <span
+                          className={`truncate text-[13px] ${
+                            isActive
+                              ? "font-semibold"
+                              : "font-medium text-muted-foreground"
+                          }`}
+                        >
+                          {p.name}
                         </span>
-                        {isLatest && (
-                          <Badge variant="dot" color="green" size="sm">
-                            latest
-                          </Badge>
+                        {isActive && (
+                          <span className="ml-auto text-[10px] tabular-nums text-muted-foreground/70">
+                            {state.versions.length}
+                          </span>
                         )}
-                      </span>
-                      <span className="truncate text-[12px] text-muted-foreground">
-                        {v.label}
-                      </span>
-                      <span className="text-[10px] tabular-nums text-muted-foreground/60">
-                        {timeAgo(v.ts)}
-                      </span>
-                    </button>
+                      </button>
+                      {isActive && (
+                        <div className="mb-1 ml-[15px] flex flex-col gap-0.5 border-l border-border/70 pl-1.5 pt-0.5">
+                          {state.versions.length === 0 && (
+                            <span className="px-2 py-1 text-[11.5px] text-muted-foreground/70">
+                              no versions yet
+                            </span>
+                          )}
+                          {[...state.versions].reverse().map((v) => {
+                            const isLatest = v.id === latest?.id;
+                            const isCurrent = v.id === currentId;
+                            return (
+                              <button
+                                key={v.id}
+                                onClick={() => selectVersion(v.id, isLatest)}
+                                className={`flex w-full min-w-0 flex-col gap-0.5 overflow-hidden rounded-lg px-2 py-1.5 text-left transition-colors ${
+                                  isCurrent
+                                    ? "bg-surface-4 shadow-surface-1"
+                                    : "hover:bg-surface-3"
+                                }`}
+                              >
+                                <span className="flex items-center gap-1.5">
+                                  <span className="text-[12px] font-semibold tabular-nums">
+                                    {v.id}
+                                  </span>
+                                  {isLatest && (
+                                    <Badge variant="dot" color="green" size="sm">
+                                      latest
+                                    </Badge>
+                                  )}
+                                </span>
+                                <span className="truncate text-[11.5px] text-muted-foreground">
+                                  {v.label}
+                                </span>
+                                <span className="text-[10px] tabular-nums text-muted-foreground/60">
+                                  {timeAgo(v.ts)}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -713,6 +731,29 @@ function CloudIcon() {
         fill="none"
         stroke="currentColor"
         strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      aria-hidden
+      className={`shrink-0 text-muted-foreground/70 transition-transform duration-150 ${
+        open ? "rotate-90" : ""
+      }`}
+    >
+      <path
+        d="M3.5 2 L7 5 L3.5 8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
