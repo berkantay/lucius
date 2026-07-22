@@ -245,6 +245,9 @@ export default function App() {
   const [acl, setAcl] = useState<{ visibility: string; members: string[] } | null>(null);
   const [inviteDraft, setInviteDraft] = useState("");
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [projectLoading, setProjectLoading] = useState(false);
+  const [canvasReady, setCanvasReady] = useState(false);
+  const [, forceTick] = useState(0);
   const [compose, setCompose] = useState<{ anchor: TextAnchor; x: number; y: number } | null>(null);
   const [composeText, setComposeText] = useState("");
   const [thread, setThread] = useState<{ id: string; x: number; y: number } | null>(null);
@@ -430,15 +433,26 @@ export default function App() {
     }
   }, [activeProject]);
 
+  // relative timestamps tick once a minute so "3m ago" never goes stale
+  useEffect(() => {
+    const t = setInterval(() => forceTick((n) => n + 1), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
   // load state whenever the active project changes
   useEffect(() => {
     setHtml(null);
     setCurrentId(null);
     setLive(true);
+    setProjectLoading(true);
+    // a selection made on another project's canvas is meaningless now
+    setSelection(null);
+    invoke("clear_selection");
     invoke<DbState>("get_state", { project: activeProject }).then((s) => {
       setState(s);
       const latest = s.versions.at(-1);
       setCurrentId(latest ? latest.id : null);
+      setProjectLoading(false);
     });
   }, [activeProject]);
 
@@ -450,7 +464,10 @@ export default function App() {
     invoke<string | null>("get_version_html", {
       project: activeProject,
       id: currentId,
-    }).then(setHtml);
+    }).then((h) => {
+      setCanvasReady(false);
+      setHtml(h);
+    });
   }, [currentId, activeProject]);
 
   const createProject = useCallback(async () => {
@@ -478,7 +495,7 @@ export default function App() {
   return (
     <TooltipProvider>
       <div className="flex h-screen flex-col bg-surface-1 text-foreground">
-        <header className="flex h-12 shrink-0 items-center gap-2.5 px-4">
+        <header className="flex h-12 shrink-0 items-center gap-2.5 px-3">
           <LogoMark />
           <span className="text-[14px] font-semibold tracking-tight">
             lucius
@@ -561,9 +578,18 @@ export default function App() {
                 >
                   <CommentIcon />
                   {versionComments.length > 0 && (
-                    <span className="text-[10px] font-semibold tabular-nums">
-                      {versionComments.length}
-                    </span>
+                    <AnimatePresence mode="popLayout" initial={false}>
+                      <motion.span
+                        key={versionComments.length}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={spring.fast}
+                        className="text-[10px] font-semibold tabular-nums"
+                      >
+                        {versionComments.length}
+                      </motion.span>
+                    </AnimatePresence>
                   )}
                 </Button>
               </Tooltip>
@@ -589,6 +615,7 @@ export default function App() {
               >
                 <motion.button
                   layout
+                  whileTap={live ? undefined : { scale: 0.96 }}
                   onClick={live ? undefined : goLive}
                   transition={spring.moderate}
                   className={`flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-medium tabular-nums ${
@@ -649,7 +676,9 @@ export default function App() {
                   const isActive = p.id === activeProject;
                   return (
                     <div key={p.id} className="flex w-full flex-col">
-                      <button
+                      <motion.button
+                        whileTap={{ scale: 0.985 }}
+                        transition={spring.fast}
                         onClick={() => setActiveProject(p.id)}
                         className={`flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left transition-colors ${
                           isActive ? "bg-surface-3" : "hover:bg-surface-3"
@@ -670,7 +699,7 @@ export default function App() {
                             {state.versions.length}
                           </span>
                         )}
-                      </button>
+                      </motion.button>
                       <AnimatePresence initial={false}>
                         {isActive && (
                           <motion.div
@@ -694,6 +723,7 @@ export default function App() {
                                   <motion.button
                                     layout
                                     key={v.id}
+                                    whileTap={{ scale: 0.985 }}
                                     initial={{ opacity: 0, x: -6 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{
@@ -749,15 +779,18 @@ export default function App() {
                 sandbox="allow-scripts"
                 srcDoc={html + PICKER_SCRIPT + ANNOTATE_SCRIPT}
                 onLoad={() => {
+                  setCanvasReady(true);
                   iframeRef.current?.contentWindow?.postMessage(
                     { type: "lucius:mode", on: selectMode },
                     "*",
                   );
                   setTimeout(pushComments, 150);
                 }}
-                className="h-full w-full border-0 bg-white"
+                className={`h-full w-full border-0 bg-white transition-opacity duration-200 ease-out ${
+                  canvasReady ? "opacity-100" : "opacity-0"
+                }`}
               />
-            ) : (
+            ) : projectLoading || state.versions.length > 0 ? null : (
               <div className="flex h-full items-center justify-center p-8">
                 <Card className="w-full max-w-md border-0 shadow-none">
                   <CardHeader className="text-center">
