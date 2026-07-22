@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# lucius reset — replay the first-run experience without losing anything.
+#
+#   scripts/reset backup    move all user-level lucius state aside (timestamped)
+#   scripts/reset restore   put the most recent backup back
+#   scripts/reset status    show what exists where
+#
+# State handled: app data dir (sessions/versions/comments DB), the Claude Code
+# skill symlink, the MCP registration, and ~/.lucius (Cloudflare publish
+# config). NOTHING is deleted — backup moves, restore moves back. The deployed
+# Cloudflare worker/bucket/KV are untouched (setup is idempotent against them).
+set -euo pipefail
+
+case "$(uname)" in
+  Darwin) DATA_DIR="$HOME/Library/Application Support/ai.glorya.lucius" ;;
+  *)      DATA_DIR="$HOME/.local/share/ai.glorya.lucius" ;;
+esac
+SKILL_LINK="$HOME/.claude/skills/lucius"
+LUCIUS_HOME="$HOME/.lucius"
+BACKUP_ROOT="$HOME/.lucius-backups"
+
+case "${1:-status}" in
+  backup)
+    if pgrep -f "target/debug/lucius|lucius.app" >/dev/null 2>&1; then
+      echo "lucius appears to be running — quit it first (and stop 'npm run tauri dev')." >&2
+      exit 1
+    fi
+    STAMP="$(date +%Y%m%d-%H%M%S)"
+    DEST="$BACKUP_ROOT/$STAMP"
+    mkdir -p "$DEST"
+    [ -d "$DATA_DIR" ] && mv "$DATA_DIR" "$DEST/data" && echo "moved data dir -> $DEST/data"
+    [ -L "$SKILL_LINK" ] && { readlink "$SKILL_LINK" > "$DEST/skill-link.txt"; rm "$SKILL_LINK"; echo "removed skill symlink (target saved)"; }
+    [ -d "$LUCIUS_HOME" ] && mv "$LUCIUS_HOME" "$DEST/dot-lucius" && echo "moved ~/.lucius -> $DEST/dot-lucius"
+    if command -v claude >/dev/null && claude mcp list 2>/dev/null | grep -q "^lucius"; then
+      claude mcp remove --scope user lucius >/dev/null 2>&1 && echo "removed MCP registration" || true
+    fi
+    echo "BACKUP_OK: $DEST — you are now a fresh user. Follow SETUP.md."
+    ;;
+  restore)
+    LAST="$(ls -1 "$BACKUP_ROOT" 2>/dev/null | sort | tail -1)"
+    [ -n "$LAST" ] || { echo "no backups under $BACKUP_ROOT" >&2; exit 1; }
+    SRC="$BACKUP_ROOT/$LAST"
+    if [ -d "$SRC/data" ]; then
+      [ -d "$DATA_DIR" ] && { echo "current data dir exists; refusing to clobber — move it aside first: $DATA_DIR" >&2; exit 1; }
+      mv "$SRC/data" "$DATA_DIR" && echo "restored data dir"
+    fi
+    [ -f "$SRC/skill-link.txt" ] && ln -sfn "$(cat "$SRC/skill-link.txt")" "$SKILL_LINK" && echo "restored skill symlink"
+    if [ -d "$SRC/dot-lucius" ]; then
+      [ -d "$LUCIUS_HOME" ] && { echo "~/.lucius exists; refusing to clobber" >&2; exit 1; }
+      mv "$SRC/dot-lucius" "$LUCIUS_HOME" && echo "restored ~/.lucius"
+    fi
+    if command -v claude >/dev/null && ! claude mcp list 2>/dev/null | grep -q "^lucius"; then
+      claude mcp add --transport http --scope user lucius http://127.0.0.1:7317/mcp >/dev/null 2>&1 && echo "restored MCP registration" || true
+    fi
+    rmdir "$SRC" 2>/dev/null || true
+    echo "RESTORE_OK: $LAST"
+    ;;
+  status)
+    echo "data dir:       $([ -d "$DATA_DIR" ] && echo present || echo absent)  ($DATA_DIR)"
+    echo "skill symlink:  $([ -e "$SKILL_LINK" ] && echo present || echo absent)"
+    echo "~/.lucius:      $([ -d "$LUCIUS_HOME" ] && echo present || echo absent)"
+    echo "backups:        $(ls -1 "$BACKUP_ROOT" 2>/dev/null | tr '\n' ' ' || true)"
+    ;;
+  *)
+    echo "usage: scripts/reset backup|restore|status" >&2; exit 1 ;;
+esac
