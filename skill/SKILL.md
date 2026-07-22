@@ -27,8 +27,8 @@ post-mortems). This is the tdoc explainer recipe, copied from their real docs
 structurally, not loosely:
 
 - **Card narrative.** The doc is a sequence of `.card` sections (white,
-  1px border, radius ~12px, subtle shadow) on a warm paper background
-  (`#f7f5ef`-family). Each card = ONE concept, with: an eyebrow pill label
+  1px hairline border, radius ~12px, subtle shadow) on a pure light-neutral
+  ground (`oklch(0.97 0 0)` — never cream/warm paper). Each card = ONE concept, with: an eyebrow pill label
   (uppercase mono, ink on wash, e.g. "THE WHOLE THING IN ONE LINE", "STAGE 2 ·
   THE SWITCHBOARD"), an h2, real prose, and its OWN diagram or visual.
   One diagram per card — not one diagram per doc.
@@ -48,8 +48,8 @@ structurally, not loosely:
   subtly. Motion lives INSIDE the diagrams; scroll reveals and one optional
   guided "watch it travel" run are extras, not the substance. All of it
   behind `prefers-reduced-motion`.
-- **Tokens.** `:root{--ink;--mut;--paper;--line;--wash}` — warm neutrals
-  only, ink as the accent: eyebrows and key terms are ink on wash, the live
+- **Tokens.** `:root{--ink;--mut;--paper;--hair;--wash}` — zero-chroma
+  neutrals only, ink as the accent: eyebrows and key terms are ink on wash, the live
   element is solid ink. Wrap: `max-width: 840px`.
   System fonts. h1 ~30px −0.02em; card h2 ~21px; card prose ~15.5px/1.6.
 - **Substance bar.** A real explainer runs 8-10 cards and ~15-25KB of HTML.

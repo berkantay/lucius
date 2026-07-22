@@ -12,22 +12,24 @@ lucius is a monochrome product. Artifacts live in the same world as the shell:
 
 ```css
 :root{
-  --paper: #F7F5EF;   /* warm paper — page ground */
-  --card:  #FFFFFF;   /* raised surface */
-  --ink:   #1D1B17;   /* warm near-black — text, strokes, marks, THE accent */
-  --mut:   #6F685C;   /* secondary text — warm grey, never #999 */
-  --line:  #E7E1D4;   /* hairlines, borders */
-  --wash:  #F0EFE9;   /* recessed surface (code, quotes, insets) */
+  --paper: oklch(0.97 0 0);   /* page ground — pure light neutral, NEVER cream */
+  --card:  #FFFFFF;           /* raised surface */
+  --ink:   oklch(0.145 0 0);  /* near-black — text, strokes, marks, THE accent */
+  --mut:   oklch(0.5 0 0);    /* secondary text */
+  --hair:  rgb(0 0 0 / 0.08); /* hairlines, borders — translucent, not grey hex */
+  --wash:  oklch(0.955 0 0);  /* recessed surface (code, quotes, insets) */
 }
 ```
 
 - **No hue. Ink IS the accent.** Artifacts are strictly achromatic — emphasis
   comes from value jumps (solid ink fills, wash insets), weight, and size.
   No orange, no green, no "just one" accent color: if an element needs to
-  pop, make it solid ink on wash, not colored. The only sanctioned near-hue
-  is the warm bias already inside the neutrals.
-- **Neutrals are chosen, not defaulted.** All greys carry the warm bias above.
-  Pure #808080/#CCCCCC reads unconsidered — never use it.
+  pop, make it solid ink on wash, not colored.
+- **Zero-chroma neutrals only.** The ground is pure light grey on white — the
+  same world as the app shell. Cream/beige/warm-paper grounds (#F7F5EF,
+  #F4F1EA and family) are BANNED — they're the recognizable AI-default look
+  and read yellow next to the shell. If a generated page looks warm, it's
+  wrong.
 - **Corners are tight.** Exactly two radii: 6px for controls/chips/insets,
   10–12px for cards/containers. Nothing larger — 16px+ rounds read soft and
   consumer-y, and full-pill shapes are reserved for tiny labels only.
@@ -86,24 +88,12 @@ Before styling any component, name its job in one sentence. If the job is
 - **Charts:** SVG, quiet hairline grid, emphasized endpoint or delta, real
   numbers only, axis labels in mono 10px. No chart without a source.
 
-## Sleek monochrome — the interface ground (distilled from the registries)
+## Sleek monochrome — the registry moves
 
-Reading docs use the warm paper world above. **Interface-mode artifacts**
-(dashboards, explorers, tools) may instead use the pure-neutral ground the
-best shadcn registries share (shadcn neutral, Fluid Functionalism, Geist):
-
-```css
-:root{
-  --bg:     oklch(1 0 0);        /* pure white ground */
-  --ink:    oklch(0.145 0 0);    /* near-black */
-  --solid:  oklch(0.205 0 0);    /* filled buttons/chips — value, not hue */
-  --mut:    oklch(0.556 0 0);    /* secondary text */
-  --wash:   oklch(0.97 0 0);     /* recessed surface */
-  --hair:   rgb(0 0 0 / 0.07);   /* hairlines — translucent, not grey */
-}
-```
-
-What actually makes these registries read "sleek" — copy the moves, not the look:
+The same ground serves both modes (interface artifacts may go pure-white
+`oklch(1 0 0)` with wash insets). What actually makes the best registries
+(shadcn neutral, Fluid Functionalism, Geist) read "sleek" — copy the moves,
+not the look:
 
 - **Contrast is the accent.** Monochrome pops through value jumps: near-black
   solid fills for the primary action/chip, everything else outline or ghost.

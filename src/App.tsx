@@ -690,7 +690,7 @@ export default function App() {
                 </Button>
               </Tooltip>
             </div>
-            <ScrollArea className="min-h-0 w-full flex-1 [&_[data-radix-scroll-area-viewport]>div]:!block">
+            <ScrollArea className="min-h-0 w-full flex-1 [&_[data-radix-scroll-area-viewport]]:!w-full [&_[data-radix-scroll-area-viewport]>div]:!block [&_[data-radix-scroll-area-viewport]>div]:!min-w-0 [&_[data-radix-scroll-area-viewport]>div]:!w-full">
               <div className="flex w-full flex-col gap-0.5 p-1.5">
                 {projects.map((p) => {
                   const isActive = p.id === activeProject;
@@ -757,7 +757,7 @@ export default function App() {
                             transition={spring.moderate}
                             className="overflow-hidden"
                           >
-                            <div className="mb-1 ml-[15px] flex flex-col gap-0.5 border-l border-border/70 pl-1.5 pt-0.5">
+                            <div className="mb-1 ml-[15px] flex min-w-0 max-w-full flex-col gap-0.5 overflow-hidden border-l border-border/70 pl-1.5 pt-0.5">
                               {state.versions.length === 0 && (
                                 <span className="px-2 py-1 text-[11.5px] text-muted-foreground/70">
                                   no versions yet
@@ -798,7 +798,7 @@ export default function App() {
                                       </span>
                                     </span>
                                     <span
-                                      className={`truncate text-[11.5px] ${
+                                      className={`block w-full max-w-full truncate text-[11.5px] ${
                                         isCurrent
                                           ? "text-foreground/80"
                                           : "text-muted-foreground"
