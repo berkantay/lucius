@@ -1,98 +1,92 @@
 ---
 name: lucius-setup
-description: Guided setup, repair, publishing, sharing and updates for the lucius canvas app. Use when the user says "set up lucius", "install lucius", "lucius isn't working", "fix lucius", "publish my lucius doc", "share / invite someone", "update lucius", or "uninstall lucius". Drives scripts/doctor and never reports success without verification.
+description: The lucius onboarding journey — a guided first-run experience from empty machine to first artifact to published-and-shared, driven step by step by the user's coding agent. Use when the user says "onboard me", "set up lucius", "get started with lucius", "install lucius", or has just installed and doesn't know what to do next. Also handles repair ("lucius isn't working"), updates, and uninstall.
 ---
 
-# lucius setup operator
+# lucius onboarding
 
-You are guiding a human through installing, repairing, publishing, sharing,
-or updating lucius. Everything is script-driven and verifiable — never
-assume a step worked; check.
+You are running the user's first-run journey. It is a guided experience, not
+a checklist dump: **one phase at a time, verify each, tell the user what they
+should be seeing on screen before moving on.** The journey is re-entrant —
+`scripts/doctor` always tells you which phase they're in, so "onboard me"
+works whether they have nothing installed or are halfway through.
 
-## Locate the install first
+Locate the install root first: `~/.lucius/src` (installer) or the current
+lucius clone (has `scripts/doctor`). Call it `ROOT`. CLI: `$ROOT/skill/lucius`.
 
-The lucius source root (scripts + skill + worker) is, in order of likelihood:
-1. `~/.lucius/src` — installed via the one-line installer
-2. the current directory, if it's a lucius git clone (has `scripts/doctor`)
+## Phase 0 · Assess & greet
 
-Set `ROOT` accordingly. The CLI is `$ROOT/skill/lucius` (also symlinked at
-`~/.claude/skills/lucius/lucius`). If neither exists, this is a fresh
-machine → "First-time install" below.
+Run `"$ROOT/scripts/doctor"` (or note it's missing → truly fresh machine).
+Read the JSON and tell the user where they stand in one sentence — e.g.
+"you're two steps away from a working canvas" — then start at their phase.
 
-## The one loop that rules everything
+## Phase 1 · Install & first launch
 
-```bash
-"$ROOT/scripts/doctor"        # JSON: deps, app_running, skill/mcp/publish, missing_steps[]
-```
+Fresh machine: macOS → `curl -fsSL https://raw.githubusercontent.com/berkantay/lucius/main/install.sh | sh`;
+otherwise clone the repo and work from source.
 
-Run it, execute `missing_steps` in order, re-run after every step:
-- `kind: install` — run the cmd yourself.
-- `kind: run` — long-runner. Installed app: `open /Applications/lucius.app`.
-  Source checkout: `npm run tauri dev` in the background (first build takes
-  minutes). Either way, poll `curl -s http://127.0.0.1:7317/api/ping` until
-  it answers before continuing.
-- `kind: optional` (publish) — only if the user wants sharing; see below.
-- `kind: check` — Linux prerequisites; install what's missing.
+Then drive doctor's `missing_steps` in order, re-running doctor after each:
+- `install` steps: run the cmd yourself.
+- `run` step: launch the app (`open /Applications/lucius.app`, or background
+  `npm run tauri dev` from source — warn that the first build takes minutes).
+  Poll `curl -s http://127.0.0.1:7317/api/ping` until it answers.
+- Never assume; re-check.
 
-Finish with `"$ROOT/scripts/verify"` — it renders the example artifact into
-a `welcome` session. Success is `VERIFY_OK` **and the user confirming they
-see "how lucius works" in the app**. `VERIFY_FAIL: <reason>` tells you what
-to fix; loop until OK.
+## Phase 2 · The first-artifact moment
 
-## First-time install (empty machine)
+1. Run `"$ROOT/scripts/verify"` → must print `VERIFY_OK`. The app now shows a
+   `welcome` session rendering "how lucius works".
+2. Tell the user to look at the app window and confirm they see it. Point out
+   the three things that matter: versions in the left rail, the crosshair
+   (point at things), highlight-to-comment on any text.
+3. **Make it theirs**: ask what they're working on right now — a system, a
+   feature, an idea — then create a session for it and render a real one-pager
+   about THEIR topic (read `$ROOT/skill/SKILL.md` and `$ROOT/skill/design.md`
+   first; truth and taste rules apply even during onboarding). This is the
+   aha moment — don't skip it, don't do a generic demo.
 
-- macOS, fastest: `curl -fsSL https://raw.githubusercontent.com/berkantay/lucius/main/install.sh | sh`
-  — installs the app, this skill, the canvas skill, and MCP. Then run the
-  doctor loop above.
-- Any OS, from source: `git clone https://github.com/berkantay/lucius && cd lucius`
-  then follow the doctor loop (SETUP.md in the repo is the same algorithm).
+Core onboarding ends here. Ask if they want sharing; if not, jump to
+Graduation.
 
-## Publishing setup (Cloudflare — the user's own account)
+## Phase 3 · Publishing (optional — their own Cloudflare)
 
-Preconditions: `wrangler` (`npm i -g wrangler`) and a free Cloudflare account.
+1. Needs `wrangler` (`npm i -g wrangler`) and a free Cloudflare account.
+2. WARN FIRST: "this opens a browser to log in to Cloudflare", then run
+   `"$ROOT/skill/lucius" setup` and wait through the login with them.
+3. Publish their topic session: `"$ROOT/skill/lucius" -p <project> publish` →
+   send them the URL, confirm it loads (curl 200). Show them the in-app cloud
+   button does the same.
 
-1. TELL THE USER FIRST: "this opens a browser to log in to Cloudflare" —
-   then run `"$ROOT/skill/lucius" setup` and wait through the interactive
-   login if needed.
-2. It provisions THEIR worker (`lucius.<their-subdomain>.workers.dev`), R2
-   bucket, KV, upload token → `~/.lucius/published.json`.
-3. Verify: `"$ROOT/skill/lucius" -p welcome publish` prints a URL; curl it
-   for HTTP 200. Tell the user the in-app cloud button now does the same.
+## Phase 4 · Invite someone (optional)
 
-## Sharing & invitations (walk the user through it)
+Explain the model in one line first: **the app has no logins — invites gate
+the published page, where viewers sign in with GitHub.**
 
-The mental model to explain: **the app has no accounts. Invites gate the
-published page; viewers sign in with GitHub there, not in the app.**
+1. `"$ROOT/skill/lucius" -p <project> share --private --add <github-username>`
+   (or: cloud dialog → Private toggle → invite field).
+2. Verify the gate: `curl -s <url>` must show "This doc is private".
+3. Tell them what their invitee will experience: gate page → Sign in with
+   GitHub → device code → doc opens. Comments made there flow back into the
+   app within ~60s (header badge), and you can answer with
+   `lucius reply <comment-id> "<what changed>" applied`.
 
-1. Publish the project (cloud button in the app, or CLI as above).
-2. Make it invite-only: in the cloud dialog flip **Private** and add GitHub
-   usernames — or `"$ROOT/skill/lucius" -p <project> share --private --add <username>`.
-3. Send the URL. Tell the user what the invitee experiences: a lucius gate
-   page → "Sign in with GitHub" → device code → doc opens if invited.
-4. Comments made on the page flow back into the app within ~60s (badge in
-   the header). The agent replies with
-   `"$ROOT/skill/lucius" -p <project> reply <comment-id> "<what changed>" applied`.
-5. Verify the gate actually gates: `curl -s <url>` (no cookies) must show
-   "This doc is private" when private is on.
+## Phase 5 · Graduation
 
-## Update lucius
+Close with exactly three things they should remember:
+1. In any Claude Code session: *"put a one-pager about X on the lucius canvas"*.
+2. Highlight any text on the canvas to comment; the crosshair points at things.
+3. The cloud button publishes and invites.
 
-- Installer-based (`~/.lucius/src`, no .git): re-run the installer one-liner —
-  it replaces the app and source atomically; data (sessions DB) is untouched.
-- Git clone: `git pull`, then `npm install && npm run tauri build` (or dev).
-- After either: doctor loop → verify.
+Plus the final doctor one-liner as proof of the finished state.
 
-## Uninstall
+## Appendix · repair / update / uninstall
 
-`rm -rf /Applications/lucius.app ~/.claude/skills/lucius ~/.claude/skills/lucius-setup ~/.lucius`
-plus `claude mcp remove --scope user lucius`. The data dir
-(`~/Library/Application Support/ai.glorya.lucius` or
-`~/.local/share/ai.glorya.lucius`) holds their sessions — ask before
-deleting it. Their Cloudflare worker keeps published docs until they run
-`wrangler delete lucius` themselves.
-
-## Reporting style
-
-End every run with: the final doctor JSON one-liner (ready / missing), what
-you changed, and the one thing the user should see on screen right now.
-Never say "should work" — say what you verified.
+- **Repair**: doctor loop until `ready: true`, then verify. Common: app not
+  running (relaunch, poll ping), port 7317 taken (server.json in the data dir
+  has the fallback port).
+- **Update**: installer-based → re-run the install one-liner (data survives);
+  git clone → `git pull && npm install`, rebuild. Then doctor + verify.
+- **Uninstall**: remove `/Applications/lucius.app`, both skill symlinks,
+  `~/.lucius`, and the MCP entry (`claude mcp remove --scope user lucius`).
+  The data dir holds their sessions — ASK before deleting. Their Cloudflare
+  worker keeps published docs until they run `wrangler delete lucius`.
