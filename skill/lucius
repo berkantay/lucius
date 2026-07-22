@@ -26,6 +26,9 @@ usage: lucius [-p <project>] <command> [args]
   reply <comment-id> <text> [applied|partial|question]
                           reply to a web comment as the agent (sets status emoji)
   comment <text> [version-id]  add a voice-note comment (author: claude)
+  status <state> [detail]  set the session's live orb: working|searching|solving|
+                          listening|composing|shaping|idle — set when you start,
+                          update per phase, ALWAYS idle when done
 
 Project selection: -p flag, else $LUCIUS_PROJECT, else "default".
 EOF
@@ -162,6 +165,12 @@ case "$cmd" in
     id="${1:?usage: lucius focus <version-id>}"
     jq -n --arg v "$id" --arg p "$PROJECT" '{version_id: $v, project_id: $p}' |
       curl -sf -X POST "${auth[@]}" --data-binary @- "$BASE/api/focus" ;;
+  status)
+    # lucius -p <proj> status <working|searching|solving|listening|composing|shaping|idle> [detail]
+    st="${1:?usage: lucius status <state> [detail]}"; detail="${2:-}"
+    jq -n --arg s "$st" --arg d "$detail" --arg p "$PROJECT" \
+      '{state: $s, detail: $d, project_id: $p}' |
+      curl -sf -X POST "${auth[@]}" --data-binary @- "$BASE/api/status" ;;
   comment)
     text="${1:?usage: lucius comment <text> [version-id]}"; vid="${2:-}"
     jq -n --arg text "$text" --arg v "$vid" --arg p "$PROJECT" \

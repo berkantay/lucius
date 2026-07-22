@@ -17,11 +17,25 @@ pub struct Selection {
     pub ts: u64,
 }
 
-struct AppState(Arc<Mutex<Store>>, Arc<Mutex<Option<Selection>>>);
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SessionStatus {
+    pub state: String,
+    pub detail: String,
+    pub ts: u64,
+}
+
+pub type StatusMap = Arc<Mutex<std::collections::HashMap<String, SessionStatus>>>;
+
+struct AppState(Arc<Mutex<Store>>, Arc<Mutex<Option<Selection>>>, StatusMap);
 
 #[tauri::command]
 fn get_projects(state: tauri::State<AppState>) -> Vec<Project> {
     state.0.lock().unwrap().projects()
+}
+
+#[tauri::command]
+fn get_statuses(state: tauri::State<AppState>) -> std::collections::HashMap<String, SessionStatus> {
+    state.2.lock().unwrap().clone()
 }
 
 #[tauri::command]
@@ -163,13 +177,15 @@ pub fn run() {
             std::fs::create_dir_all(&dir).ok();
             let store = Arc::new(Mutex::new(Store::new(dir.clone())));
             let selection: Arc<Mutex<Option<Selection>>> = Arc::new(Mutex::new(None));
-            app.manage(AppState(store.clone(), selection.clone()));
-            server::start(app.handle().clone(), store.clone(), selection, dir);
+            let statuses: StatusMap = Arc::new(Mutex::new(Default::default()));
+            app.manage(AppState(store.clone(), selection.clone(), statuses.clone()));
+            server::start(app.handle().clone(), store.clone(), selection, statuses, dir);
             publish::start_comment_poller(app.handle().clone(), store);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             get_projects,
+            get_statuses,
             create_project,
             get_state,
             get_version_html,

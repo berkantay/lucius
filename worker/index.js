@@ -120,6 +120,34 @@ export default {
       return json({ error: "method not allowed" }, 405);
     }
 
+    // ---- session status: live activity orb, mirrored from the app ----
+    if (p === "/api/status") {
+      if (req.method === "GET") {
+        const slug = url.searchParams.get("slug");
+        if (!slug) return json({ error: "slug required" }, 400);
+        const raw = await env.META.get(`status:${slug}`);
+        return json(raw ? JSON.parse(raw) : { state: "idle", detail: "" });
+      }
+      if (req.method === "POST") {
+        if (!hasUploadToken(env, req)) return json({ error: "unauthorized" }, 401);
+        const body = await req.json().catch(() => null);
+        if (!body || !body.slug || !body.state)
+          return json({ error: "body must be {slug, state, detail?}" }, 400);
+        if (body.state === "idle") {
+          await env.META.delete(`status:${body.slug}`);
+        } else {
+          // 10-minute TTL so a crashed agent can't leave a doc "working" forever
+          await env.META.put(
+            `status:${body.slug}`,
+            JSON.stringify({ state: body.state, detail: body.detail || "", ts: Date.now() }),
+            { expirationTtl: 600 },
+          );
+        }
+        return json({ ok: true });
+      }
+      return json({ error: "method not allowed" }, 405);
+    }
+
     // ---- gate slug-scoped reads/mutations for private docs ----
     // Token-authed and auth/upload routes pass straight through to the bundle.
     const gated =
@@ -150,6 +178,51 @@ export default {
       }
     }
 
-    return inner.fetch(req, env, ctx);
+    const res = await inner.fetch(req, env, ctx);
+
+    // Inject the live-activity orb into served doc pages so teammates see
+    // when an agent is actively working the session behind this doc.
+    const docPage = url.pathname.match(/^\/d\/([^/]+)\/v\/\d+\/?$/);
+    if (docPage && res.status === 200 && (res.headers.get("content-type") || "").includes("text/html")) {
+      const slug = decodeURIComponent(docPage[1]);
+      let text = await res.text();
+      text = text.replace("</body>", `${STATUS_WIDGET(slug)}</body>`);
+      const h = new Headers(res.headers);
+      h.delete("content-length");
+      return new Response(text, { status: 200, headers: h });
+    }
+    return res;
   },
 };
+
+// Vanilla dotted "working" orb — the published-page cousin of the app's
+// thinking-orbs indicator. Polls /api/status every 12s; hidden when idle.
+const STATUS_WIDGET = (slug) => `<script>(function(){
+  var el=document.createElement("div");
+  el.style.cssText="position:fixed;right:16px;bottom:16px;z-index:2147482000;display:none;align-items:center;gap:8px;background:#1d1b17;color:#fff;border-radius:999px;padding:6px 14px 6px 8px;font:500 12px system-ui;box-shadow:0 4px 16px rgba(0,0,0,.25)";
+  var cv=document.createElement("canvas");cv.width=44;cv.height=44;cv.style.cssText="width:22px;height:22px;display:block";
+  var lbl=document.createElement("span");
+  el.appendChild(cv);el.appendChild(lbl);document.body.appendChild(el);
+  var ctx=cv.getContext("2d"),t0=performance.now(),cur=null,raf=null;
+  var reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function draw(now){
+    var t=(now-t0)/1000;ctx.clearRect(0,0,44,44);
+    for(var i=0;i<12;i++){
+      var a=t*1.6+i*Math.PI/6,r=14+Math.sin(t*2.2+i*1.7)*3.5;
+      var x=22+Math.cos(a)*r,y=22+Math.sin(a)*r*0.62;
+      ctx.beginPath();ctx.arc(x,y,1.8,0,7);
+      ctx.fillStyle="rgba(255,255,255,"+(0.35+0.65*Math.abs(Math.sin(t+i)))+")";ctx.fill();
+    }
+    if(!reduced)raf=requestAnimationFrame(draw);
+  }
+  function apply(s){
+    if(!s||s.state==="idle"||!s.state){el.style.display="none";if(raf)cancelAnimationFrame(raf);raf=null;return;}
+    lbl.textContent=s.state+(s.detail?" \\u00b7 "+s.detail:"");
+    if(el.style.display!=="flex"){el.style.display="flex";if(!raf)raf=requestAnimationFrame(draw);}
+    if(reduced)draw(performance.now());
+  }
+  function poll(){
+    fetch("/api/status?slug=${slug}").then(function(r){return r.json()}).then(apply).catch(function(){});
+  }
+  poll();setInterval(poll,12000);
+})()</script>`;

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { motion, AnimatePresence } from "framer-motion";
+import { ThinkingOrb } from "thinking-orbs";
 import { spring } from "@/lib/springs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,8 @@ import {
 } from "@/components/ui/terminal-animation";
 
 type Project = { id: string; name: string; ts: number };
+type SessionStatus = { state: string; detail: string; ts: number };
+type OrbState = "working" | "searching" | "solving" | "listening" | "composing" | "shaping";
 type Version = { id: string; label: string; ts: number };
 type Comment = {
   id: string;
@@ -246,6 +249,7 @@ export default function App() {
   const [inviteDraft, setInviteDraft] = useState("");
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [projectLoading, setProjectLoading] = useState(false);
+  const [statuses, setStatuses] = useState<Record<string, SessionStatus>>({});
   const [canvasReady, setCanvasReady] = useState(false);
   const [, forceTick] = useState(0);
   const [compose, setCompose] = useState<{ anchor: TextAnchor; x: number; y: number } | null>(null);
@@ -280,6 +284,19 @@ export default function App() {
     const unProjects = listen<{ projects: Project[] }>(
       "lucius://projects",
       (e) => setProjects(e.payload.projects),
+    );
+    invoke<Record<string, SessionStatus>>("get_statuses").then(setStatuses);
+    const unStatus = listen<{ projectId: string; state: string; detail: string; ts: number }>(
+      "lucius://status",
+      (e) => {
+        const { projectId, state: st, detail, ts } = e.payload;
+        setStatuses((prev) => {
+          const next = { ...prev };
+          if (st === "idle") delete next[projectId];
+          else next[projectId] = { state: st, detail, ts };
+          return next;
+        });
+      },
     );
     invoke<{ host: string } | null>("publish_config").then((c) =>
       setPubHost(c ? c.host : null),
@@ -334,6 +351,7 @@ export default function App() {
       unUpdate.then((f) => f());
       unProjects.then((f) => f());
       unRemote.then((f) => f());
+      unStatus.then((f) => f());
       window.removeEventListener("message", onPickerMessage);
     };
   }, []);
@@ -696,11 +714,26 @@ export default function App() {
                         >
                           {p.name}
                         </span>
-                        {isActive && (
-                          <span className="ml-auto text-[10px] tabular-nums text-muted-foreground/70">
-                            {state.versions.length}
-                          </span>
-                        )}
+                        <span className="ml-auto flex items-center gap-1.5">
+                          {statuses[p.id] && (
+                            <Tooltip
+                              content={`${statuses[p.id].state}${statuses[p.id].detail ? ` · ${statuses[p.id].detail}` : ""}`}
+                              side="right"
+                            >
+                              <span className="grid h-5 w-5 place-items-center">
+                                <ThinkingOrb
+                                  state={statuses[p.id].state as OrbState}
+                                  size={20}
+                                />
+                              </span>
+                            </Tooltip>
+                          )}
+                          {isActive && (
+                            <span className="text-[10px] tabular-nums text-muted-foreground/70">
+                              {state.versions.length}
+                            </span>
+                          )}
+                        </span>
                       </motion.button>
                       <AnimatePresence initial={false}>
                         {isActive && (

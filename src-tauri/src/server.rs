@@ -1,5 +1,5 @@
 use crate::store::{Store, DEFAULT_PROJECT};
-use crate::Selection;
+use crate::{Selection, SessionStatus, StatusMap};
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -10,6 +10,7 @@ pub fn start(
     app: AppHandle,
     store: Arc<Mutex<Store>>,
     selection: Arc<Mutex<Option<Selection>>>,
+    statuses: StatusMap,
     data_dir: PathBuf,
 ) {
     // Fixed port first so MCP clients can use a stable URL; fall back to ephemeral.
@@ -37,7 +38,7 @@ pub fn start(
 
     std::thread::spawn(move || {
         for mut request in server.incoming_requests() {
-            let (status, body) = handle(&app, &store, &selection, &token, &mut request);
+            let (status, body) = handle(&app, &store, &selection, &statuses, &token, &mut request);
             let response = Response::from_string(body)
                 .with_status_code(status)
                 .with_header(
@@ -60,6 +61,7 @@ fn handle(
     app: &AppHandle,
     store: &Arc<Mutex<Store>>,
     selection: &Arc<Mutex<Option<Selection>>>,
+    statuses: &StatusMap,
     token: &str,
     request: &mut tiny_http::Request,
 ) -> (u16, String) {
@@ -80,7 +82,7 @@ fn handle(
         let mut body = String::new();
         let _ = std::io::Read::read_to_string(request.as_reader(), &mut body);
         let msg: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
-        return handle_mcp(app, store, selection, &msg);
+        return handle_mcp(app, store, selection, statuses, &msg);
     }
 
     let authed = request.headers().iter().any(|h| {
@@ -122,6 +124,50 @@ fn handle(
         (Method::Get, "/api/selection") => {
             let sel = selection.lock().unwrap().clone();
             (200, serde_json::to_string(&sel).unwrap())
+        }
+        (Method::Get, "/api/status") => {
+            let map = statuses.lock().unwrap().clone();
+            (200, serde_json::to_string(&map).unwrap())
+        }
+        (Method::Post, "/api/status") => {
+            let Some(st) = payload["state"].as_str() else {
+                return (400, json!({ "error": "body must be {state, detail?, project_id?}" }).to_string());
+            };
+            const VALID: [&str; 7] = ["idle", "working", "searching", "solving", "listening", "composing", "shaping"];
+            if !VALID.contains(&st) {
+                return (400, json!({ "error": format!("state must be one of {VALID:?}") }).to_string());
+            }
+            let detail = payload["detail"].as_str().unwrap_or("").to_string();
+            let ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0);
+            {
+                let mut map = statuses.lock().unwrap();
+                if st == "idle" {
+                    map.remove(&project);
+                } else {
+                    map.insert(project.clone(), SessionStatus { state: st.into(), detail: detail.clone(), ts });
+                }
+            }
+            let _ = app.emit(
+                "lucius://status",
+                json!({ "projectId": project, "state": st, "detail": detail, "ts": ts }),
+            );
+            // team visibility: mirror to the published worker (best-effort, async)
+            if let Some((slug, _url, _v)) = store.lock().unwrap().publish_of(&project) {
+                let st = st.to_string();
+                std::thread::spawn(move || {
+                    if let Some(cfg) = crate::publish::config() {
+                        let _ = ureq::post(&format!("{}/api/status", cfg.base))
+                            .set("Authorization", &format!("Bearer {}", cfg.token))
+                            .set("Content-Type", "application/json")
+                            .timeout(std::time::Duration::from_secs(10))
+                            .send_string(&json!({ "slug": slug, "state": st, "detail": detail }).to_string());
+                    }
+                });
+            }
+            (200, json!({ "ok": true }).to_string())
         }
         (Method::Post, "/api/render") => {
             let Some(html) = payload["html"].as_str() else {
@@ -258,6 +304,14 @@ fn mcp_tools() -> Value {
                 "project": str_prop("project id, default 'default'") } }
         },
         {
+            "name": "set_status",
+            "description": "Set the live activity orb for a lucius session (visible to the user and, if published, to their team). States: working, searching, solving, listening, composing, shaping, idle. Set it when you START a task on a session, update the detail as phases change, and ALWAYS set idle when done.",
+            "inputSchema": { "type": "object", "required": ["state"], "properties": {
+                "state": str_prop("one of: working|searching|solving|listening|composing|shaping|idle"),
+                "detail": str_prop("short human line, e.g. 'drafting architecture v6'"),
+                "project": str_prop("project id, default 'default'") } }
+        },
+        {
             "name": "get_version_html",
             "description": "Read back the full HTML of a version.",
             "inputSchema": { "type": "object", "required": ["version_id"], "properties": {
@@ -271,6 +325,7 @@ fn handle_mcp(
     app: &AppHandle,
     store: &Arc<Mutex<Store>>,
     selection: &Arc<Mutex<Option<Selection>>>,
+    statuses: &StatusMap,
     msg: &Value,
 ) -> (u16, String) {
     let method = msg["method"].as_str().unwrap_or("");
@@ -352,6 +407,35 @@ fn handle_mcp(
                         "lucius://update",
                         json!({ "projectId": project, "state": state, "focusId": v }),
                     );
+                    tool_text(id, json!({ "ok": true }).to_string(), false)
+                }
+                "set_status" => {
+                    let Some(st) = args["state"].as_str() else {
+                        return tool_text(id, "missing required arg: state".into(), true);
+                    };
+                    let detail = args["detail"].as_str().unwrap_or("").to_string();
+                    let ts = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_millis() as u64)
+                        .unwrap_or(0);
+                    {
+                        let mut map = statuses.lock().unwrap();
+                        if st == "idle" { map.remove(&project); }
+                        else { map.insert(project.clone(), SessionStatus { state: st.into(), detail: detail.clone(), ts }); }
+                    }
+                    let _ = app.emit("lucius://status", json!({ "projectId": project, "state": st, "detail": detail, "ts": ts }));
+                    if let Some((slug, _u, _v)) = store.lock().unwrap().publish_of(&project) {
+                        let st2 = st.to_string();
+                        std::thread::spawn(move || {
+                            if let Some(cfg) = crate::publish::config() {
+                                let _ = ureq::post(&format!("{}/api/status", cfg.base))
+                                    .set("Authorization", &format!("Bearer {}", cfg.token))
+                                    .set("Content-Type", "application/json")
+                                    .timeout(std::time::Duration::from_secs(10))
+                                    .send_string(&json!({ "slug": slug, "state": st2, "detail": detail }).to_string());
+                            }
+                        });
+                    }
                     tool_text(id, json!({ "ok": true }).to_string(), false)
                 }
                 "get_version_html" => {

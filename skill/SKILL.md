@@ -78,6 +78,10 @@ instead of piling everything into `default`.
 3. `lucius render /path/diagram.html "short label"` — it appears on the canvas instantly and becomes the new latest version (e.g. `v4`).
 4. Iterate: each `render` is a NEW version. Never try to mutate an old one — that's the point.
 5. `lucius comment "note text" v4` — record decisions and voice notes as you go.
+5b. `lucius status working "drafting v5"` when you START on a session, update the
+   detail per phase (searching/solving/composing/shaping), and ALWAYS
+   `lucius status idle` when done — it drives the live orb the user (and their
+   team, on published docs) watches.
 6. `lucius state` — versions + comments as JSON. `lucius html v2` — read back an old iteration. `lucius focus v2` — make the app show a version while discussing it.
 
 ## Truth rules (non-negotiable)
