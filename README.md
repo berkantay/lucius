@@ -33,7 +33,16 @@ loop is the product.
 
 ## Install
 
-**The recommended way: let your coding agent do it.** Tell Claude Code (or
+**End users (macOS):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/berkantay/lucius/main/install.sh | sh
+```
+
+Installs the app to /Applications, the Claude Code skill + CLI, and the MCP
+registration. Then open lucius and tell Claude Code to draw.
+
+**From source — let your coding agent do it.** Tell Claude Code (or
 any agent): *"clone github.com/berkantay/lucius and follow SETUP.md"*. The
 repo ships an agent runbook ([SETUP.md](SETUP.md)) plus `scripts/doctor`
 (machine-readable setup state), and `scripts/verify` (proves the loop by
