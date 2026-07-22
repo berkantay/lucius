@@ -512,7 +512,7 @@ export default function App() {
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen flex-col bg-surface-1 text-foreground">
+      <div className="flex h-dvh flex-col bg-surface-1 text-foreground">
         <header className="flex h-12 shrink-0 items-center gap-2.5 px-3">
           <LogoMark />
           <span className="text-[14px] font-semibold tracking-tight">

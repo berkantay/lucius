@@ -231,3 +231,6 @@
     -webkit-background-clip: text;
     animation: shimmer 1.5s ease-in-out infinite;
 }
+/* fullscreen safety: WKWebView doesn't always recompute vh on fullscreen
+   transitions — anchor the app to a real height chain instead. */
+html, body, #root { height: 100%; }
