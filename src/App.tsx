@@ -351,8 +351,8 @@ export default function App() {
               )}
             </AnimatePresence>
 
-            {/* action cluster */}
-            <div className="flex items-center gap-0.5 rounded-full border border-border bg-surface-2 p-0.5 shadow-surface-1">
+            {/* action cluster — same 28px height as the status pill */}
+            <div className="flex h-7 items-center gap-px rounded-full border border-border bg-surface-2 px-[3px] shadow-surface-1">
               <Tooltip
                 content={selectMode ? "Stop selecting" : "Point at an element to talk about it"}
                 side="bottom"
@@ -361,7 +361,7 @@ export default function App() {
                   variant={selectMode ? "primary" : "ghost"}
                   size="icon-sm"
                   aria-label="Select an element"
-                  className="rounded-full"
+                  className="h-[22px] w-[22px] rounded-full p-0"
                   disabled={!html}
                   onClick={() => setSelectMode((m) => !m)}
                 >
@@ -373,7 +373,7 @@ export default function App() {
                   variant="ghost"
                   size="icon-sm"
                   aria-label="Publish and share"
-                  className="rounded-full"
+                  className="h-[22px] w-[22px] rounded-full p-0"
                   disabled={state.versions.length === 0}
                   onClick={openPublish}
                 >
@@ -795,13 +795,14 @@ export default function App() {
 }
 
 function CloudIcon() {
+  // plain cloud outline on the same 16px grid/stroke as CursorIcon
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
+    <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden>
       <path
-        d="M4.5 12.5 a3 3 0 0 1 -.4-5.97 4 4 0 0 1 7.8 0 A3 3 0 0 1 11.5 12.5 Z M8 11 V7.5 M6.5 9 L8 7.3 L9.5 9"
+        d="M4.8 12.5 h6.6 a2.9 2.9 0 0 0 .5 -5.76 a4 4 0 0 0 -7.85 .55 A2.75 2.75 0 0 0 4.8 12.5 Z"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.3"
+        strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -810,15 +811,13 @@ function CloudIcon() {
 }
 
 function CursorIcon() {
+  // crosshair — "point at an element"; symmetric, survives 12px
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden>
-      <path
-        d="M3 2 L13 7.2 L8.6 8.6 L7.2 13 Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-      />
+      <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <circle cx="8" cy="8" r="3.25" />
+        <path d="M8 1.5 V3.5 M8 12.5 V14.5 M1.5 8 H3.5 M12.5 8 H14.5" />
+      </g>
     </svg>
   );
 }
