@@ -15,7 +15,7 @@ anything that fits on one rich page. Treat every iteration as a real artifact.
 
 **REQUIRED: read `design.md` in this skill directory before authoring any
 artifact.** It is the taste layer — the lucius monochrome house style (ink on
-paper, one signal-color budget, typography-led hierarchy), the anti-slop list,
+paper, ink as the only accent, tight radii, typography-led hierarchy), the anti-slop list,
 the component mindset, and the pre-render self-review. An artifact that
 ignores it is a defect even if the content is correct.
 
@@ -27,9 +27,9 @@ post-mortems). This is the tdoc explainer recipe, copied from their real docs
 structurally, not loosely:
 
 - **Card narrative.** The doc is a sequence of `.card` sections (white,
-  1px border, radius ~18px, subtle shadow) on a warm paper background
+  1px border, radius ~12px, subtle shadow) on a warm paper background
   (`#f7f5ef`-family). Each card = ONE concept, with: an eyebrow pill label
-  (uppercase, accent color, e.g. "THE WHOLE THING IN ONE LINE", "STAGE 2 ·
+  (uppercase mono, ink on wash, e.g. "THE WHOLE THING IN ONE LINE", "STAGE 2 ·
   THE SWITCHBOARD"), an h2, real prose, and its OWN diagram or visual.
   One diagram per card — not one diagram per doc.
 - **Progressive zoom.** Card 1 is the whole system as a numbered pipeline
@@ -48,9 +48,9 @@ structurally, not loosely:
   subtly. Motion lives INSIDE the diagrams; scroll reveals and one optional
   guided "watch it travel" run are extras, not the substance. All of it
   behind `prefers-reduced-motion`.
-- **Tokens.** `:root{--ink;--mut;--paper;--line;--accent;--accent-bg}` —
-  warm neutrals, exactly one accent used for eyebrows, numbers, key terms
-  (`<b class="k">`), and recommended badges. Wrap: `max-width: 840px`.
+- **Tokens.** `:root{--ink;--mut;--paper;--line;--wash}` — warm neutrals
+  only, ink as the accent: eyebrows and key terms are ink on wash, the live
+  element is solid ink. Wrap: `max-width: 840px`.
   System fonts. h1 ~30px −0.02em; card h2 ~21px; card prose ~15.5px/1.6.
 - **Substance bar.** A real explainer runs 8-10 cards and ~15-25KB of HTML.
   If the doc has fewer than ~6 sections or one lonely diagram, it is too
@@ -58,7 +58,7 @@ structurally, not loosely:
 
 **Canvas mode** (the artifact IS the interface: architecture explorers,
 simulations, clickable prototypes, dashboards). Go full-bleed with the house
-tokens from `design.md` (monochrome + the signal budget), and add the
+tokens from `design.md` (strictly monochrome, ink as accent), and add the
 interaction the subject calls for — click-to-inspect, hover highlighting,
 animated flows, keyboard navigation.
 

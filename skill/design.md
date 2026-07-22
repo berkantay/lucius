@@ -14,23 +14,25 @@ lucius is a monochrome product. Artifacts live in the same world as the shell:
 :root{
   --paper: #F7F5EF;   /* warm paper — page ground */
   --card:  #FFFFFF;   /* raised surface */
-  --ink:   #1D1B17;   /* warm near-black — text, strokes, marks */
+  --ink:   #1D1B17;   /* warm near-black — text, strokes, marks, THE accent */
   --mut:   #6F685C;   /* secondary text — warm grey, never #999 */
   --line:  #E7E1D4;   /* hairlines, borders */
   --wash:  #F0EFE9;   /* recessed surface (code, quotes, insets) */
-  --signal:#C2410C;   /* THE one accent — see budget below */
 }
 ```
 
+- **No hue. Ink IS the accent.** Artifacts are strictly achromatic — emphasis
+  comes from value jumps (solid ink fills, wash insets), weight, and size.
+  No orange, no green, no "just one" accent color: if an element needs to
+  pop, make it solid ink on wash, not colored. The only sanctioned near-hue
+  is the warm bias already inside the neutrals.
 - **Neutrals are chosen, not defaulted.** All greys carry the warm bias above.
   Pure #808080/#CCCCCC reads unconsidered — never use it.
-- **The signal budget:** `--signal` appears in at most THREE kinds of places
-  per artifact: (1) the eyebrow/section labels, (2) the single live/animated
-  element (packet, pulse, active state), (3) `<b class="k">` key terms in
-  prose. If you're about to use it for a fourth thing, remove one first.
-  A fully monochrome artifact is always acceptable; a colorful one never is.
+- **Corners are tight.** Exactly two radii: 6px for controls/chips/insets,
+  10–12px for cards/containers. Nothing larger — 16px+ rounds read soft and
+  consumer-y, and full-pill shapes are reserved for tiny labels only.
 - **Depth is the shell's ladder:** paper → card (1px `--line` border, radius
-  14–18px, shadow no stronger than `0 1px 0 rgba(0,0,0,.02)`) → wash insets.
+  10–12px, shadow no stronger than `0 1px 0 rgba(0,0,0,.02)`) → wash insets.
   No colored zones, no tinted section backgrounds, no gradients — zone
   identity comes from position, dashed hairline boxes, and labels.
 
@@ -56,7 +58,7 @@ lucius is a monochrome product. Artifacts live in the same world as the shell:
 - Numbered markers (01/02/03) on content that isn't actually a sequence.
 - Emoji as section markers or bullets. Icons that merely restate the label.
 - Gradient anything. Glassmorphism. Drop shadows above the house ladder.
-- `border-radius` soup — pick 6–8px (small) and 14–18px (cards); nothing else.
+- `border-radius` soup — pick 6px (small) and 10–12px (cards); nothing else.
 - Centered everything. Center a hero line at most; content is left-set.
 - Generic "card with icon + title + two lines" grids — if every cell has the
   same shape and none would be missed, the section is filler.
@@ -105,7 +107,7 @@ What actually makes these registries read "sleek" — copy the moves, not the lo
 
 - **Contrast is the accent.** Monochrome pops through value jumps: near-black
   solid fills for the primary action/chip, everything else outline or ghost.
-  No hue needed; the signal budget still applies on top.
+  No hue needed — ink-as-accent applies here too.
 - **Hairlines are translucent black** (`rgb(0 0 0 / .06–.08)`), never a grey
   hex — they sit correctly on every surface level automatically.
 - **In-between weights.** Fluid tunes Inter to wght 450/550, not 400/600 —
@@ -118,7 +120,7 @@ What actually makes these registries read "sleek" — copy the moves, not the lo
   (Fluid's spring tokens). Interface artifacts never wobble; save the
   personality for the one ambient/live element.
 - **Two radii, one shadow step.** Registries feel tight because nothing
-  varies without meaning: 6–8px controls, 14–18px containers, and at most
+  varies without meaning: 6px controls, 10–12px containers, and at most
   one shadow level above the hairline.
 
 ## Motion has a job (fluid-functionalism rule)
@@ -132,7 +134,7 @@ Everything behind `prefers-reduced-motion` with a static fallback.
 
 1. **Plan before HTML** (5 lines, in your head or a comment): subject + one-
    sentence job of the page · treatment (utilitarian/editorial) · where the
-   signal budget goes · the one bespoke component this content deserves ·
+   solid-ink emphasis goes · the one bespoke component this content deserves ·
    what you will NOT include.
 2. Build with the house tokens. Real content only.
 3. **Self-review against the anti-slop list**, then the squint test, then the
