@@ -137,6 +137,19 @@ Tools: `get_selection`, `list_projects`, `get_state`, `render`, `add_comment`
 (supports `anchor` selector), `focus`, `get_version_html`. MCP and the CLI hit
 the same store — use whichever is available.
 
+## Sharing, invites, and reacting to web comments
+
+Published docs support members: `lucius -p <proj> share --private --add <gh-user>`
+limits viewing/commenting to invited GitHub logins (worker-side gate with a
+branded sign-in page); `--link` makes it link-visible again; `lucius acl` shows
+current state. The app's Publish dialog has the same controls.
+
+When web comments arrive (they merge into `lucius state` within ~60s, author
+"<login> (web)"), address EVERY one: fix it in the next iteration or explain,
+then `lucius -p <proj> reply <comment-id> "<what you did>" applied|partial|question`
+— this posts an agent reply on the published page and stamps the status emoji,
+exactly like tdoc's comment loop.
+
 ## Auth plumbing (handled by the CLI)
 
 The app writes `~/Library/Application Support/ai.glorya.lucius/server.json`

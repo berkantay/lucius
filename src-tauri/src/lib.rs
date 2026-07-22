@@ -129,6 +129,24 @@ async fn publish_project(
 }
 
 #[tauri::command]
+async fn get_acl(project: String) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || publish::get_acl(&project))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn set_acl(
+    project: String,
+    visibility: String,
+    members: Vec<String>,
+) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || publish::set_acl(&project, &visibility, members))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 fn server_info(app: tauri::AppHandle) -> Option<serde_json::Value> {
     let dir = app.path().app_data_dir().ok()?;
     let raw = std::fs::read_to_string(dir.join("server.json")).ok()?;
@@ -160,6 +178,8 @@ pub fn run() {
             publish_config,
             publish_status,
             publish_project,
+            get_acl,
+            set_acl,
             server_info
         ])
         .run(tauri::generate_context!())

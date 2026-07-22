@@ -20,6 +20,11 @@ usage: lucius [-p <project>] <command> [args]
   html <version-id>       fetch the HTML of a version
   focus <version-id>      make the app show a specific version
   publish                 publish the project to the user's Cloudflare worker, prints URL
+  share [--private|--link] [--add <gh-user>] [--remove <gh-user>]
+                          set who can see the published doc (invite members)
+  acl                     show the published doc's visibility + members
+  reply <comment-id> <text> [applied|partial|question]
+                          reply to a web comment as the agent (sets status emoji)
   comment <text> [version-id]  add a voice-note comment (author: claude)
 
 Project selection: -p flag, else $LUCIUS_PROJECT, else "default".
@@ -46,7 +51,7 @@ if [ "${1:-}" = "setup" ]; then
   SRC_WORKER="$SKILL_DIR/../worker"
   [ -f "$SRC_WORKER/_worker.bundled.js" ] || { echo "worker bundle missing at $SRC_WORKER" >&2; exit 1; }
   WORK="$HOME/.lucius/worker"; mkdir -p "$WORK"
-  cp "$SRC_WORKER/_worker.bundled.js" "$WORK/"
+  cp "$SRC_WORKER/_worker.bundled.js" "$SRC_WORKER/index.js" "$WORK/"
 
   OWNER="$(gh api user -q .login 2>/dev/null || echo "")"
   echo "[lucius] creating R2 bucket lucius-docs (idempotent)..."
@@ -80,6 +85,46 @@ if [ "${1:-}" = "setup" ]; then
   echo "[lucius] ready — publishing lives at https://$HOST"
   exit 0
 fi
+
+# ---- cloud commands: talk to the published worker directly (no app needed) --
+case "${1:-}" in
+  share|acl|reply)
+    CFG="$HOME/.lucius/published.json"
+    [ -f "$CFG" ] || { echo "not set up — run: lucius setup" >&2; exit 2; }
+    WHOST="$(jq -r '.worker + "." + .subdomain + ".workers.dev"' "$CFG")"
+    WTOKEN="$(jq -r .upload_token "$CFG")"
+    WAUTH=(-H "authorization: Bearer $WTOKEN" -H "content-type: application/json")
+    cmd="$1"; shift
+    case "$cmd" in
+      acl)
+        curl -sf "${WAUTH[@]}" "https://$WHOST/api/acl?slug=$PROJECT"; echo ;;
+      share)
+        # lucius -p <proj> share [--private|--link] [--add user]... [--remove user]...
+        CUR="$(curl -sf "${WAUTH[@]}" "https://$WHOST/api/acl?slug=$PROJECT")"
+        VIS="$(echo "$CUR" | jq -r .visibility)"
+        MEMBERS="$(echo "$CUR" | jq -c .members)"
+        while [ $# -gt 0 ]; do
+          case "$1" in
+            --private) VIS="private"; shift ;;
+            --link)    VIS="link"; shift ;;
+            --add)     MEMBERS="$(echo "$MEMBERS" | jq -c --arg u "$2" '. + [$u] | unique')"; shift 2 ;;
+            --remove)  MEMBERS="$(echo "$MEMBERS" | jq -c --arg u "$2" 'map(select(. != ($u | ascii_downcase)))')"; shift 2 ;;
+            *) echo "unknown flag: $1" >&2; exit 1 ;;
+          esac
+        done
+        jq -n --arg slug "$PROJECT" --arg vis "$VIS" --argjson members "$MEMBERS" \
+          '{slug: $slug, visibility: $vis, members: $members}' |
+          curl -sf -X POST "${WAUTH[@]}" --data-binary @- "https://$WHOST/api/acl"; echo ;;
+      reply)
+        # lucius -p <proj> reply <comment-id> <text> [applied|partial|question]
+        cid="${1:?usage: lucius reply <comment-id> <text> [status]}"
+        text="${2:?reply text required}"; status="${3:-applied}"
+        jq -n --arg slug "$PROJECT" --arg id "$cid" --arg text "$text" --arg st "$status" \
+          '{slug: $slug, parent_id: $id, text: $text, status: $st}' |
+          curl -sf -X POST "${WAUTH[@]}" --data-binary @- "https://$WHOST/api/agent/reply"; echo ;;
+    esac
+    exit 0 ;;
+esac
 
 [ -f "$INFO" ] || { echo "lucius app is not running (no $INFO)" >&2; exit 2; }
 PORT=$(jq -r .port "$INFO")

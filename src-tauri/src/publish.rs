@@ -98,6 +98,31 @@ pub fn publish_project(store: &Arc<Mutex<Store>>, project: &str) -> Result<Strin
     Ok(url)
 }
 
+pub fn get_acl(slug: &str) -> Result<Value, String> {
+    let cfg = config().ok_or("publishing not set up — run `lucius setup`")?;
+    ureq::get(&format!("{}/api/acl?slug={slug}", cfg.base))
+        .set("Authorization", &format!("Bearer {}", cfg.token))
+        .timeout(std::time::Duration::from_secs(20))
+        .call()
+        .map_err(|e| e.to_string())?
+        .into_json()
+        .map_err(|e| e.to_string())
+}
+
+pub fn set_acl(slug: &str, visibility: &str, members: Vec<String>) -> Result<Value, String> {
+    let cfg = config().ok_or("publishing not set up — run `lucius setup`")?;
+    ureq::post(&format!("{}/api/acl", cfg.base))
+        .set("Authorization", &format!("Bearer {}", cfg.token))
+        .set("Content-Type", "application/json")
+        .timeout(std::time::Duration::from_secs(20))
+        .send_string(
+            &json!({ "slug": slug, "visibility": visibility, "members": members }).to_string(),
+        )
+        .map_err(|e| e.to_string())?
+        .into_json()
+        .map_err(|e| e.to_string())
+}
+
 /// Background poller: every 60s pull comments for every published project
 /// from the worker and merge new ones into the local store. New comments emit
 /// a lucius://update (state refresh) and a lucius://remote-comments ping so

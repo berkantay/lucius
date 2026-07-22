@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { InputField, InputGroup } from "@/components/ui/input-group";
 import { InputCopy as PublishUrlCopy } from "@/components/ui/input-copy";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { ThinkingIndicator } from "@/components/ui/thinking-indicator";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Elevated } from "@/lib/elevated";
@@ -127,6 +129,8 @@ export default function App() {
   const [pubBusy, setPubBusy] = useState(false);
   const [pubError, setPubError] = useState<string | null>(null);
   const [webNews, setWebNews] = useState<{ project: string; count: number } | null>(null);
+  const [acl, setAcl] = useState<{ visibility: string; members: string[] } | null>(null);
+  const [inviteDraft, setInviteDraft] = useState("");
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const liveRef = useRef(live);
   liveRef.current = live;
@@ -201,12 +205,32 @@ export default function App() {
 
   const openPublish = useCallback(async () => {
     setPubError(null);
+    setAcl(null);
     const prev = await invoke<{ url: string } | null>("publish_status", {
       project: activeProject,
     });
     setPubUrl(prev?.url ?? null);
     setPubOpen(true);
+    if (prev?.url) {
+      invoke<{ visibility: string; members: string[] }>("get_acl", {
+        project: activeProject,
+      })
+        .then(setAcl)
+        .catch(() => setAcl(null));
+    }
   }, [activeProject]);
+
+  const saveAcl = useCallback(
+    async (visibility: string, members: string[]) => {
+      setAcl({ visibility, members });
+      try {
+        await invoke("set_acl", { project: activeProject, visibility, members });
+      } catch (e) {
+        setPubError(String(e));
+      }
+    },
+    [activeProject],
+  );
 
   const doPublish = useCallback(async () => {
     setPubBusy(true);
@@ -522,6 +546,82 @@ export default function App() {
                 {pubBusy && (
                   <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
                     <ThinkingIndicator /> uploading versions…
+                  </div>
+                )}
+                {pubUrl && acl && (
+                  <div className="flex flex-col gap-2 rounded-xl bg-surface-2 p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[13px] font-medium">
+                          Private — invited members only
+                        </span>
+                        <span className="text-[11.5px] text-muted-foreground">
+                          {acl.visibility === "private"
+                            ? "Only the GitHub users below can view & comment"
+                            : "Anyone with the link can view & comment"}
+                        </span>
+                      </div>
+                      <Switch
+                        label=""
+                        checked={acl.visibility === "private"}
+                        onToggle={() =>
+                          saveAcl(
+                            acl.visibility === "private" ? "link" : "private",
+                            acl.members,
+                          )
+                        }
+                      />
+                    </div>
+                    {acl.visibility === "private" && (
+                      <>
+                        <div className="flex flex-wrap gap-1.5">
+                          {acl.members.length === 0 && (
+                            <span className="text-[12px] text-muted-foreground">
+                              no members yet — invite by GitHub username
+                            </span>
+                          )}
+                          {acl.members.map((m) => (
+                            <Badge key={m} variant="dot" color="gray" size="sm">
+                              @{m}
+                              <button
+                                aria-label={`Remove ${m}`}
+                                className="ml-1 opacity-60 hover:opacity-100"
+                                onClick={() =>
+                                  saveAcl(
+                                    acl.visibility,
+                                    acl.members.filter((x) => x !== m),
+                                  )
+                                }
+                              >
+                                ×
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                        <form
+                          className="flex items-center gap-2"
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const u = inviteDraft.trim().replace(/^@/, "").toLowerCase();
+                            if (!u) return;
+                            setInviteDraft("");
+                            saveAcl(acl.visibility, [
+                              ...new Set([...acl.members, u]),
+                            ]);
+                          }}
+                        >
+                          <Input
+                            value={inviteDraft}
+                            onChange={(e) => setInviteDraft(e.target.value)}
+                            placeholder="github-username"
+                            className="h-8 text-[13px]"
+                          />
+                          <Button type="submit" size="sm" variant="tertiary">
+                            Invite
+                          </Button>
+                        </form>
+                      </>
+                    )}
                   </div>
                 )}
                 {pubError && (

@@ -86,10 +86,21 @@ Claude Code ──(CLI / MCP, bearer token)──▶ control server (Rust, tiny_
 - `worker/` — the publish/comments worker (vendored from
   [tdoc](https://github.com/serenakeyitan/tdoc), MIT — see `worker/ATTRIBUTION.md`)
 
+### Members & invites
+
+Published docs default to link-visibility. Make one private and invite people
+by GitHub username — from the Publish dialog's share section, or:
+
+```bash
+./skill/lucius -p myproject share --private --add teammate
+```
+
+Uninvited visitors get a branded sign-in gate; invited logins pass straight
+through after GitHub sign-in. The agent can also reply to web comments with
+status (`lucius reply <comment-id> "done" applied`).
+
 ## Roadmap
 
-- **Members & invites** — per-doc GitHub-login allowlists on the worker;
-  private docs, share modal in-app.
 - **Comment surfaces in-app** — anchored margin comments over the canvas
   (they're already stored + selector-anchored; the UI was deliberately cut
   until it earns its place).
