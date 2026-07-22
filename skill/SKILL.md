@@ -13,6 +13,12 @@ is topic-agnostic: an architecture explorer, a product one-pager for the sales
 or customer-success team, a post-mortem, an explainer with a live simulation —
 anything that fits on one rich page. Treat every iteration as a real artifact.
 
+**REQUIRED: read `design.md` in this skill directory before authoring any
+artifact.** It is the taste layer — the lucius monochrome house style (ink on
+paper, one signal-color budget, typography-led hierarchy), the anti-slop list,
+the component mindset, and the pre-render self-review. An artifact that
+ignores it is a defect even if the content is correct.
+
 ## Two artifact modes — pick before writing
 
 **Document mode** (default — explainers, product briefs, specs, write-ups,
@@ -51,10 +57,10 @@ structurally, not loosely:
   thin — add the missing stages, comparisons, and the recap table.
 
 **Canvas mode** (the artifact IS the interface: architecture explorers,
-simulations, clickable prototypes, dashboards). Go full-bleed, design a small
-token system (4–6 colors as custom properties, one accent used in one place),
-and add the interaction the subject calls for — click-to-inspect, hover
-highlighting, animated flows, keyboard navigation.
+simulations, clickable prototypes, dashboards). Go full-bleed with the house
+tokens from `design.md` (monochrome + the signal budget), and add the
+interaction the subject calls for — click-to-inspect, hover highlighting,
+animated flows, keyboard navigation.
 
 ## Projects (tabs)
 
