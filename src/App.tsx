@@ -237,7 +237,6 @@ export default function App() {
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [live, setLive] = useState(true);
   const [html, setHtml] = useState<string | null>(null);
-  const [port, setPort] = useState<number | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [selectMode, setSelectMode] = useState(false);
@@ -270,9 +269,6 @@ export default function App() {
 
   useEffect(() => {
     invoke<Project[]>("get_projects").then(setProjects);
-    invoke<{ port: number } | null>("server_info").then((info) => {
-      if (info) setPort(info.port);
-    });
     const unUpdate = listen<UpdatePayload>("lucius://update", (e) => {
       if (e.payload.projectId !== activeRef.current) {
         // an explicit render/focus in another project pulls the app there
@@ -524,13 +520,6 @@ export default function App() {
           <span className="text-[14px] font-semibold tracking-tight">
             lucius
           </span>
-          <Tooltip content={port ? "connected" : "starting…"} side="bottom">
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                port ? "bg-emerald-500" : "bg-amber-400"
-              }`}
-            />
-          </Tooltip>
           <div className="ml-auto flex items-center gap-2">
             <AnimatePresence>
               {webNews && (
