@@ -30,6 +30,10 @@ lucius is a monochrome product. Artifacts live in the same world as the shell:
   #F4F1EA and family) are BANNED — they're the recognizable AI-default look
   and read yellow next to the shell. If a generated page looks warm, it's
   wrong.
+- **Scope every element selector.** Never style bare `svg`, `img`, `button`,
+  or `text` globally (`svg{width:100%}` etc.) — published pages get a comment
+  overlay injected, and global element rules bleed into its UI (giant logo
+  SVGs, broken buttons). Scope to your containers: `.card svg`, `figure img`.
 - **Selection is gray.** `::selection { background: rgb(0 0 0 / 0.14) }` in
   every artifact — the system-blue highlight is off-palette.
 - **Corners are tight.** Exactly two radii: 6px for controls/chips/insets,
