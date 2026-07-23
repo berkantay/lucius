@@ -186,7 +186,12 @@ export default {
     if (docPage && res.status === 200 && (res.headers.get("content-type") || "").includes("text/html")) {
       const slug = decodeURIComponent(docPage[1]);
       let text = await res.text();
-      text = text.replace("</body>", `${STATUS_WIDGET(slug)}</body>`);
+      // Defensive: docs with global element CSS (svg{width:100%}) inflate the
+      // overlay's UI SVGs (bar mark, sign-in logo) to page width. Cap them.
+      const GUARD =
+        '<style>[class*="tdoc-"] svg,[id^="tdoc-"] svg{max-width:64px;max-height:64px}' +
+        '.tdoc-bar svg{max-height:22px;max-width:90px}</style>';
+      text = text.replace("</body>", `${GUARD}${STATUS_WIDGET(slug)}</body>`);
       const h = new Headers(res.headers);
       h.delete("content-length");
       return new Response(text, { status: 200, headers: h });
