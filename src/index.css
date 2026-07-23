@@ -234,3 +234,6 @@
 /* fullscreen safety: WKWebView doesn't always recompute vh on fullscreen
    transitions — anchor the app to a real height chain instead. */
 html, body, #root { height: 100%; }
+
+/* monochrome text selection — system blue is off-palette */
+::selection { background: rgb(0 0 0 / 0.14); }

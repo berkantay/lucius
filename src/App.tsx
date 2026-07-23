@@ -62,6 +62,9 @@ type SelectionInfo = { selector: string; tag: string; text: string };
 // Injected into every rendered artifact: an element picker that highlights on
 // hover and reports the clicked element to the shell via postMessage. Armed
 // only while select-mode is on, so it never fights the artifact's own JS.
+// injected into every artifact: keep text selection in the monochrome world
+const CANVAS_STYLE = `<style>::selection{background:rgba(0,0,0,.14)}</style>`;
+
 const PICKER_SCRIPT = `<script>(function(){
   var mode=false,hoverEl=null,prevOutline="",prevOffset="";
   function clear(){if(hoverEl){hoverEl.style.outline=prevOutline;hoverEl.style.outlineOffset=prevOffset;hoverEl=null;}}
@@ -833,7 +836,7 @@ export default function App() {
                 ref={iframeRef}
                 title={currentId ?? "canvas"}
                 sandbox="allow-scripts"
-                srcDoc={html + PICKER_SCRIPT + ANNOTATE_SCRIPT}
+                srcDoc={html + CANVAS_STYLE + PICKER_SCRIPT + ANNOTATE_SCRIPT}
                 onLoad={() => {
                   setCanvasReady(true);
                   iframeRef.current?.contentWindow?.postMessage(
