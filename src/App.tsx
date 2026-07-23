@@ -249,6 +249,9 @@ export default function App() {
   const [webNews, setWebNews] = useState<{ project: string; count: number } | null>(null);
   const [acl, setAcl] = useState<{ visibility: string; members: string[] } | null>(null);
   const [inviteDraft, setInviteDraft] = useState("");
+  const [peopleOpen, setPeopleOpen] = useState(false);
+  const [members, setMembers] = useState<string[] | null>(null);
+  const [peopleError, setPeopleError] = useState<string | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [projectLoading, setProjectLoading] = useState(false);
   const [statuses, setStatuses] = useState<Record<string, SessionStatus>>({});
@@ -405,6 +408,27 @@ export default function App() {
   const versionComments = state.comments.filter(
     (c) => !c.version_id || c.version_id === currentId,
   );
+
+  const openPeople = useCallback(async () => {
+    setPeopleError(null);
+    setPeopleOpen(true);
+    try {
+      const r = await invoke<{ members: string[] }>("get_members");
+      setMembers(r.members);
+    } catch (e) {
+      setMembers(null);
+      setPeopleError(String(e));
+    }
+  }, []);
+
+  const saveMembers = useCallback(async (next: string[]) => {
+    setMembers(next);
+    try {
+      await invoke("set_members", { members: next });
+    } catch (e) {
+      setPeopleError(String(e));
+    }
+  }, []);
 
   const openPublish = useCallback(async () => {
     setPubError(null);
@@ -607,6 +631,17 @@ export default function App() {
                     )}
                   </AnimatePresence>
                 </span>
+              </Tooltip>
+              <Tooltip content="People — workspace members" side="bottom">
+                <Button
+                  variant={peopleOpen ? "primary" : "ghost"}
+                  size="icon-sm"
+                  aria-label="Workspace members"
+                  className="h-[22px] w-[22px] rounded-full p-0"
+                  onClick={openPeople}
+                >
+                  <PeopleIcon />
+                </Button>
               </Tooltip>
               <Tooltip content="Publish & share" side="bottom">
                 <Button
@@ -1083,54 +1118,16 @@ export default function App() {
                       />
                     </div>
                     {acl.visibility === "private" && (
-                      <>
-                        <div className="flex flex-wrap gap-1.5">
-                          {acl.members.length === 0 && (
-                            <span className="text-[12px] text-muted-foreground">
-                              no members yet — invite by GitHub username
-                            </span>
-                          )}
-                          {acl.members.map((m) => (
-                            <Badge key={m} variant="dot" color="gray" size="sm">
-                              @{m}
-                              <button
-                                aria-label={`Remove ${m}`}
-                                className="ml-1 opacity-60 hover:opacity-100"
-                                onClick={() =>
-                                  saveAcl(
-                                    acl.visibility,
-                                    acl.members.filter((x) => x !== m),
-                                  )
-                                }
-                              >
-                                ×
-                              </button>
-                            </Badge>
-                          ))}
-                        </div>
-                        <form
-                          className="flex items-center gap-2"
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            const u = inviteDraft.trim().replace(/^@/, "").toLowerCase();
-                            if (!u) return;
-                            setInviteDraft("");
-                            saveAcl(acl.visibility, [
-                              ...new Set([...acl.members, u]),
-                            ]);
-                          }}
-                        >
-                          <Input
-                            value={inviteDraft}
-                            onChange={(e) => setInviteDraft(e.target.value)}
-                            placeholder="github-username"
-                            className="h-8 text-[13px]"
-                          />
-                          <Button type="submit" size="sm" variant="tertiary">
-                            Invite
-                          </Button>
-                        </form>
-                      </>
+                      <button
+                        className="text-left text-[12px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                        onClick={() => {
+                          setPubOpen(false);
+                          openPeople();
+                        }}
+                      >
+                        Visible to your workspace members — manage them in
+                        People (the person icon).
+                      </button>
                     )}
                   </div>
                 )}
@@ -1170,6 +1167,71 @@ export default function App() {
                 </DialogFooter>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={peopleOpen} onOpenChange={setPeopleOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>People</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-3">
+              <p className="text-[13px] text-muted-foreground">
+                Workspace members can view and comment on every private doc you
+                publish. Invite by GitHub username — they sign in on the
+                published page, nothing to set up.
+              </p>
+              {peopleError && (
+                <p className="text-[13px] text-red-600">{peopleError}</p>
+              )}
+              {members && (
+                <div className="flex flex-wrap gap-1.5">
+                  {members.length === 0 && (
+                    <span className="text-[12px] text-muted-foreground">
+                      no members yet
+                    </span>
+                  )}
+                  {members.map((m) => (
+                    <Badge key={m} variant="dot" color="gray" size="sm">
+                      @{m}
+                      <button
+                        aria-label={`Remove ${m}`}
+                        className="ml-1 opacity-60 hover:opacity-100"
+                        onClick={() => saveMembers(members.filter((x) => x !== m))}
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <form
+                className="flex items-center gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const u = inviteDraft.trim().replace(/^@/, "").toLowerCase();
+                  if (!u || !members) return;
+                  setInviteDraft("");
+                  saveMembers([...new Set([...members, u])]);
+                }}
+              >
+                <Input
+                  value={inviteDraft}
+                  onChange={(e) => setInviteDraft(e.target.value)}
+                  placeholder="github-username"
+                  className="h-8 text-[13px]"
+                  disabled={!members}
+                />
+                <Button type="submit" size="sm" variant="tertiary" disabled={!members}>
+                  Invite
+                </Button>
+              </form>
+              <DialogFooter>
+                <Button size="sm" variant="tertiary" onClick={() => setPeopleOpen(false)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
 
@@ -1227,6 +1289,17 @@ function CloudIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function PeopleIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden>
+      <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <circle cx="8" cy="5.5" r="2.75" />
+        <path d="M2.8 13.5 a5.2 5.2 0 0 1 10.4 0" />
+      </g>
     </svg>
   );
 }

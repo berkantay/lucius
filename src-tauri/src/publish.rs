@@ -98,6 +98,29 @@ pub fn publish_project(store: &Arc<Mutex<Store>>, project: &str) -> Result<Strin
     Ok(url)
 }
 
+pub fn get_members() -> Result<Value, String> {
+    let cfg = config().ok_or("publishing not set up — run `lucius setup`")?;
+    ureq::get(&format!("{}/api/members", cfg.base))
+        .set("Authorization", &format!("Bearer {}", cfg.token))
+        .timeout(std::time::Duration::from_secs(20))
+        .call()
+        .map_err(|e| e.to_string())?
+        .into_json()
+        .map_err(|e| e.to_string())
+}
+
+pub fn set_members(members: Vec<String>) -> Result<Value, String> {
+    let cfg = config().ok_or("publishing not set up — run `lucius setup`")?;
+    ureq::post(&format!("{}/api/members", cfg.base))
+        .set("Authorization", &format!("Bearer {}", cfg.token))
+        .set("Content-Type", "application/json")
+        .timeout(std::time::Duration::from_secs(20))
+        .send_string(&json!({ "members": members }).to_string())
+        .map_err(|e| e.to_string())?
+        .into_json()
+        .map_err(|e| e.to_string())
+}
+
 pub fn get_acl(slug: &str) -> Result<Value, String> {
     let cfg = config().ok_or("publishing not set up — run `lucius setup`")?;
     ureq::get(&format!("{}/api/acl?slug={slug}", cfg.base))

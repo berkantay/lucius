@@ -20,8 +20,11 @@ usage: lucius [-p <project>] <command> [args]
   html <version-id>       fetch the HTML of a version
   focus <version-id>      make the app show a specific version
   publish                 publish the project to the user's Cloudflare worker, prints URL
+  invite <gh-user>        add a WORKSPACE member (sees every private doc)
+  uninvite <gh-user>      remove a workspace member
+  members                 list workspace members
   share [--private|--link] [--add <gh-user>] [--remove <gh-user>]
-                          set who can see the published doc (invite members)
+                          per-doc visibility (+ optional per-doc extra members)
   acl                     show the published doc's visibility + members
   reply <comment-id> <text> [applied|partial|question]
                           reply to a web comment as the agent (sets status emoji)
@@ -91,7 +94,7 @@ fi
 
 # ---- cloud commands: talk to the published worker directly (no app needed) --
 case "${1:-}" in
-  share|acl|reply)
+  share|acl|reply|members|invite|uninvite)
     CFG="$HOME/.lucius/published.json"
     [ -f "$CFG" ] || { echo "not set up — run: lucius setup" >&2; exit 2; }
     WHOST="$(jq -r '.worker + "." + .subdomain + ".workers.dev"' "$CFG")"
@@ -101,6 +104,19 @@ case "${1:-}" in
     case "$cmd" in
       acl)
         curl -sf "${WAUTH[@]}" "https://$WHOST/api/acl?slug=$PROJECT"; echo ;;
+      members)
+        curl -sf "${WAUTH[@]}" "https://$WHOST/api/members"; echo ;;
+      invite|uninvite)
+        # workspace-level: lucius invite <gh-user> / lucius uninvite <gh-user>
+        u="${1:?usage: lucius $cmd <github-username>}"
+        CUR="$(curl -sf "${WAUTH[@]}" "https://$WHOST/api/members" | jq -c .members)"
+        if [ "$cmd" = "invite" ]; then
+          NEXT="$(echo "$CUR" | jq -c --arg u "$u" '. + [($u | ascii_downcase)] | unique')"
+        else
+          NEXT="$(echo "$CUR" | jq -c --arg u "$u" 'map(select(. != ($u | ascii_downcase)))')"
+        fi
+        jq -n --argjson m "$NEXT" '{members: $m}' |
+          curl -sf -X POST "${WAUTH[@]}" --data-binary @- "https://$WHOST/api/members"; echo ;;
       share)
         # lucius -p <proj> share [--private|--link] [--add user]... [--remove user]...
         CUR="$(curl -sf "${WAUTH[@]}" "https://$WHOST/api/acl?slug=$PROJECT")"

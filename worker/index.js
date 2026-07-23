@@ -120,6 +120,26 @@ export default {
       return json({ error: "method not allowed" }, 405);
     }
 
+    // ---- workspace members: ONE invite list for everything published ----
+    if (p === "/api/members") {
+      if (!hasUploadToken(env, req)) return json({ error: "unauthorized" }, 401);
+      if (req.method === "GET") {
+        const raw = await env.META.get("workspace:members");
+        return json({ members: raw ? JSON.parse(raw) : [] });
+      }
+      if (req.method === "POST") {
+        const body = await req.json().catch(() => null);
+        if (!body || !Array.isArray(body.members))
+          return json({ error: "body must be {members: [gh logins]}" }, 400);
+        const members = body.members
+          .map((s) => String(s).trim().toLowerCase().replace(/^@/, ""))
+          .filter(Boolean);
+        await env.META.put("workspace:members", JSON.stringify(members));
+        return json({ ok: true, members });
+      }
+      return json({ error: "method not allowed" }, 405);
+    }
+
     // ---- session status: live activity orb, mirrored from the app ----
     if (p === "/api/status") {
       if (req.method === "GET") {
@@ -163,8 +183,12 @@ export default {
         if (acl.visibility === "private") {
           const login = await sessionLogin(env, req);
           const owner = (env.TDOC_OWNER || "").toLowerCase();
+          // workspace members are invited to every private doc
+          const wsRaw = await env.META.get("workspace:members");
+          const ws = wsRaw ? JSON.parse(wsRaw) : [];
           const allowed =
-            login && (login === owner || acl.members.includes(login));
+            login &&
+            (login === owner || acl.members.includes(login) || ws.includes(login));
           if (!allowed) {
             if (p.startsWith("/d/")) {
               return new Response(gatePage(slug), {

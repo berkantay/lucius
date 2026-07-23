@@ -144,6 +144,20 @@ async fn publish_project(
 }
 
 #[tauri::command]
+async fn get_members() -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(publish::get_members)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn set_members(members: Vec<String>) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || publish::set_members(members))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
 async fn get_acl(project: String) -> Result<serde_json::Value, String> {
     tauri::async_runtime::spawn_blocking(move || publish::get_acl(&project))
         .await
@@ -197,6 +211,8 @@ pub fn run() {
             publish_project,
             get_acl,
             set_acl,
+            get_members,
+            set_members,
             server_info
         ])
         .run(tauri::generate_context!())
